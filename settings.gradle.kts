@@ -8,3 +8,5 @@
  */
 
 rootProject.name = "junit-to-jmh"
+
+include("converter")
