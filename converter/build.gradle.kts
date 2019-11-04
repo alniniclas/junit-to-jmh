@@ -4,6 +4,8 @@ plugins {
 }
 
 dependencies {
+    implementation("info.picocli", "picocli", "4.0.4")
+
     testImplementation("org.junit.jupiter", "junit-jupiter-api", "5.5.2")
     testRuntimeOnly("org.junit.jupiter", "junit-jupiter-engine", "5.5.2")
 }
