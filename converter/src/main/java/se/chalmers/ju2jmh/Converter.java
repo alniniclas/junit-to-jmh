@@ -24,10 +24,9 @@ public class Converter implements Callable<Integer> {
         if (!Files.exists(inputFile)) {
             throw new FileNotFoundException(inputFile + " does not exist");
         }
-        CompilationUnit input = StaticJavaParser.parse(inputFile);
-        CompilationUnit output = BenchmarkAnnotationAdder.addBenchmarkAnnotations(
-                TestCaseExtractor.extractTestMethods(input));
-        System.out.println(output);
+        CompilationUnit ast = StaticJavaParser.parse(inputFile);
+        BenchmarkAnnotationAdder.addBenchmarkAnnotations(ast);
+        System.out.println(ast);
         return 0;
     }
 }
