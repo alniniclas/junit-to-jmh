@@ -9,14 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class BenchmarkAnnotationAdderTest {
-    private static CompilationUnit loadAst(String resource) throws IOException {
-        return AstResources.loadAst(BenchmarkAnnotationAdderTest.class, resource);
-    }
+    private static final AstResourceLoader astLoader =
+            new AstResourceLoader(BenchmarkAnnotationAdderTest.class);
 
     @Test
     public void addsBenchmarkAnnotations() throws IOException {
-        CompilationUnit ast = loadAst("SimpleTest_Input.java");
-        CompilationUnit expected = loadAst("SimpleTest_Expected.java");
+        CompilationUnit ast = astLoader.load("SimpleTest_Input.java");
+        CompilationUnit expected = astLoader.load("SimpleTest_Expected.java");
 
         BenchmarkAnnotationAdder.addBenchmarkAnnotations(ast);
 
@@ -25,8 +24,8 @@ public class BenchmarkAnnotationAdderTest {
 
     @Test
     public void modifiesInput() throws IOException {
-        CompilationUnit input = loadAst("SimpleTest_Input.java");
-        CompilationUnit unexpected = loadAst("SimpleTest_Input.java");
+        CompilationUnit input = astLoader.load("SimpleTest_Input.java");
+        CompilationUnit unexpected = astLoader.load("SimpleTest_Input.java");
 
         BenchmarkAnnotationAdder.addBenchmarkAnnotations(input);
 
@@ -35,8 +34,8 @@ public class BenchmarkAnnotationAdderTest {
 
     @Test
     public void handlesDifferentAnnotations() throws IOException {
-        CompilationUnit ast = loadAst("DifferentAnnotations_Input.java");
-        CompilationUnit expected = loadAst("DifferentAnnotations_Expected.java");
+        CompilationUnit ast = astLoader.load("DifferentAnnotations_Input.java");
+        CompilationUnit expected = astLoader.load("DifferentAnnotations_Expected.java");
 
         BenchmarkAnnotationAdder.addBenchmarkAnnotations(ast);
 
