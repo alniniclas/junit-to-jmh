@@ -1,5 +1,7 @@
 package se.chalmers.ju2jmh;
 
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
 import picocli.CommandLine;
 
 import java.io.FileNotFoundException;
@@ -22,7 +24,10 @@ public class Converter implements Callable<Integer> {
         if (!Files.exists(inputFile)) {
             throw new FileNotFoundException(inputFile + " does not exist");
         }
-        System.out.println(Files.readString(inputFile));
+        CompilationUnit input = StaticJavaParser.parse(inputFile);
+        CompilationUnit output = BenchmarkAnnotationAdder.addBenchmarkAnnotations(
+                TestCaseExtractor.extractTestMethods(input));
+        System.out.println(output);
         return 0;
     }
 }
