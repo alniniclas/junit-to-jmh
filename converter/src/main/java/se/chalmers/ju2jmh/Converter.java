@@ -25,7 +25,7 @@ public class Converter implements Callable<Integer> {
             throw new FileNotFoundException(inputFile + " does not exist");
         }
         CompilationUnit ast = StaticJavaParser.parse(inputFile);
-        BenchmarkAnnotationAdder.addBenchmarkAnnotations(ast);
+        JmhAnnotationAdder.addBenchmarkAnnotations(ast);
         System.out.println(ast);
         return 0;
     }
