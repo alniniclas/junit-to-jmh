@@ -18,7 +18,8 @@ public class JmhAnnotationAdderTest {
             "SimpleTest",
             "FixtureMethods",
             "DifferentAnnotations",
-            "MultipleClasses"
+            "MultipleClasses",
+            "IgnoredTest"
     })
     public void producesExpectedOutput(String testCase) throws IOException {
         CompilationUnit ast = astLoader.load(testCase + "_Input.java");
