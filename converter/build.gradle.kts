@@ -10,6 +10,7 @@ dependencies {
     implementation("info.picocli", "picocli", "4.0.4")
     implementation("com.github.javaparser", "javaparser-core", javaparserVersion)
     implementation("org.openjdk.jmh", "jmh-core", "1.22")
+    implementation(project(":api"))
 
     testImplementation("org.junit.jupiter", "junit-jupiter-api", junitVersion)
     testImplementation("org.junit.jupiter", "junit-jupiter-params", junitVersion)

@@ -32,6 +32,7 @@ public class Converter implements Callable<Integer> {
             throw new FileNotFoundException(inputFile + " does not exist");
         }
         CompilationUnit ast = StaticJavaParser.parse(inputFile);
+        ExceptionTestRestructurer.restructureExceptionTests(ast);
         JmhAnnotationAdder.addBenchmarkAnnotations(ast);
         if (improveFixture) {
             JmhFixtureImprover.improveFixture(ast);
