@@ -9,9 +9,12 @@ public class ReturnValue {
     public void benchmark1() {
         setUp1();
         setUp2();
-        notABenchmark();
-        tearDown1();
-        tearDown2();
+        try {
+            notABenchmark();
+        } finally {
+            tearDown1();
+            tearDown2();
+        }
     }
 
     @org.openjdk.jmh.annotations.Benchmark

@@ -18,11 +18,14 @@ public class Annotations {
         setUp2();
         setUp3();
         setUp4();
-        notABenchmark();
-        tearDown1();
-        tearDown2();
-        tearDown3();
-        tearDown4();
+        try {
+            notABenchmark();
+        } finally {
+            tearDown1();
+            tearDown2();
+            tearDown3();
+            tearDown4();
+        }
     }
 
     public void setUp1() {

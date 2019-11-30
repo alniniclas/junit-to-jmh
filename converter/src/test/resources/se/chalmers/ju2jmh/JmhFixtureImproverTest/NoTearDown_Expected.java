@@ -1,7 +1,7 @@
 package com.example;
 
 @org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Thread)
-public class ReturnValueNoTearDown {
+public class NoTearDown {
     public void notABenchmark() {
     }
 

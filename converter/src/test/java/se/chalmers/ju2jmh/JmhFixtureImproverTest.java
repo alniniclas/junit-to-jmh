@@ -18,7 +18,7 @@ public class JmhFixtureImproverTest {
     @ValueSource(strings = {
             "IncludeFixtureMethods",
             "ReturnValue",
-            "ReturnValueNoTearDown",
+            "NoTearDown",
             "Annotations"
     })
     public void producesExpectedOutput(String testCase) throws IOException {

@@ -42,9 +42,8 @@ public class JmhFixtureImprover {
         }
     }
 
-    private static void injectFixtureCalls(MethodDeclaration benchmarkMethod,
-                                           List<MethodDeclaration> setUpMethods,
-                                           List<MethodDeclaration> tearDownMethods) {
+    private static void injectFixtureSetUpCalls(MethodDeclaration benchmarkMethod,
+                                                List<MethodDeclaration> setUpMethods) {
         BlockStmt body = benchmarkMethod.getBody().get();
         int index = 0;
         for (MethodDeclaration setUpMethod : setUpMethods) {
@@ -52,10 +51,9 @@ public class JmhFixtureImprover {
             body.addStatement(index, methodCall);
             index++;
         }
-        addMethodCalls(body, tearDownMethods);
     }
 
-    private static void injectFixtureCallsWithFinally(
+    private static void injectFixtureCalls(
             MethodDeclaration benchmarkMethod, List<MethodDeclaration> invocationSetUpMethods,
             List<MethodDeclaration> invocationTearDownMethods) {
         BlockStmt newBody = new BlockStmt();
@@ -82,11 +80,10 @@ public class JmhFixtureImprover {
                     .filter(m -> m.isAnnotationPresent(Benchmark.class))
                     .collect(Collectors.toUnmodifiableList());
             for (MethodDeclaration benchmarkMethod : benchmarkMethods) {
-                if (benchmarkMethod.getType().isVoidType() || invocationTearDownMethods.isEmpty()) {
-                    injectFixtureCalls(
-                            benchmarkMethod, invocationSetUpMethods, invocationTearDownMethods);
+                if (invocationTearDownMethods.isEmpty()) {
+                    injectFixtureSetUpCalls(benchmarkMethod, invocationSetUpMethods);
                 } else {
-                    injectFixtureCallsWithFinally(
+                    injectFixtureCalls(
                             benchmarkMethod, invocationSetUpMethods, invocationTearDownMethods);
                 }
             }

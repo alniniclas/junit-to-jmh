@@ -16,8 +16,11 @@ public class IncludeFixtureMethods {
     public void test1() {
         setUp1();
         setUp2();
-        tearDown1();
-        tearDown2();
+        try {
+        } finally {
+            tearDown1();
+            tearDown2();
+        }
     }
 
     @Test
@@ -25,9 +28,12 @@ public class IncludeFixtureMethods {
     public void test2() {
         setUp1();
         setUp2();
-        notATest();
-        tearDown1();
-        tearDown2();
+        try {
+            notATest();
+        } finally {
+            tearDown1();
+            tearDown2();
+        }
     }
 
     @Before
