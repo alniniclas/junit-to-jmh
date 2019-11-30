@@ -1,4 +1,4 @@
-package se.chalmers.ju2jmh.examples;
+package se.chalmers.ju2jmh.samples;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;

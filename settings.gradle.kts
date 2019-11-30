@@ -10,5 +10,5 @@
 rootProject.name = "junit-to-jmh"
 
 include("converter")
-include("examples")
+include("samples")
 include("api")

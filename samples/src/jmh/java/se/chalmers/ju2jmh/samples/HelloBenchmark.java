@@ -1,4 +1,4 @@
-package se.chalmers.ju2jmh.examples;
+package se.chalmers.ju2jmh.samples;
 
 import org.openjdk.jmh.annotations.Benchmark;
 
