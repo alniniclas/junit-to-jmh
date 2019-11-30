@@ -3,10 +3,6 @@ plugins {
     id("me.champeau.gradle.jmh") version "0.5.0"
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     // Use JUnit 4.12 instead of JUnit 5, as 4 is the version we're targeting.
     val junitVersion = "4.12"
