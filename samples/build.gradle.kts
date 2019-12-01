@@ -5,9 +5,10 @@ plugins {
 
 dependencies {
     // Use JUnit 4.12 instead of JUnit 5, as 4 is the version we're targeting.
-    val junitVersion = "4.12"
-    testImplementation("junit", "junit", junitVersion)
-    jmh("junit", "junit", junitVersion)
+    val jUnit4Version: String by rootProject.extra
+
+    testImplementation("junit", "junit", jUnit4Version)
+    jmh("junit", "junit", jUnit4Version)
 }
 
 jmh {
