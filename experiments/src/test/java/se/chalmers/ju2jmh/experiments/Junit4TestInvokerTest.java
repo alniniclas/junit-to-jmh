@@ -66,7 +66,7 @@ public class Junit4TestInvokerTest {
 
         @Test
         public void test() {
-            events.add("test");
+            Junit4TestInvokerTest.events.add("test");
         }
     }
 
@@ -122,10 +122,10 @@ public class Junit4TestInvokerTest {
         }
 
         @Rule
-        public TestRule filedRule1 = new EventLoggingRule("fieldRule1");
+        public TestRule fieldRule1 = new EventLoggingRule("fieldRule1");
 
         @Rule
-        public TestRule filedRule2 = new EventLoggingRule("fieldRule2");
+        public TestRule fieldRule2 = new EventLoggingRule("fieldRule2");
 
         @Rule
         public TestRule methodRule1() {
@@ -139,7 +139,7 @@ public class Junit4TestInvokerTest {
 
         @Test
         public void test() {
-            events.add("test");
+            Junit4TestInvokerTest.events.add("test");
         }
     }
 
@@ -154,5 +154,43 @@ public class Junit4TestInvokerTest {
         assertNextEventsAre(events, "after1", "after2");
         assertNextEventsAre(events, "methodRule1 after", "methodRule2 after");
         assertNextEventsAre(events, "fieldRule1 after", "fieldRule2 after");
+    }
+
+    @Ignore
+    public static class UnitTestWithInheritance extends UnitTestWithRulesAndFixture {
+        @Before
+        public void subclassBefore() {
+            Junit4TestInvokerTest.events.add("subclassBefore");
+        }
+
+        @After
+        public void subclassAfter() {
+            Junit4TestInvokerTest.events.add("subclassAfter");
+        }
+
+        @Rule
+        public TestRule subclassFieldRule = new EventLoggingRule("subclassFieldRule");
+
+        @Rule
+        public TestRule subclassMethodRule() {
+            return new EventLoggingRule("subclassMethodRule");
+        }
+    }
+
+    @Test
+    public void unitTestWithInheritance() throws Throwable {
+        JUnit4TestInvoker.invoke(UnitTestWithInheritance.class, "test");
+
+        assertNextEventsAre(events, "fieldRule1 before", "fieldRule2 before",
+                "subclassFieldRule before");
+        assertNextEventsAre(events, "methodRule1 before", "methodRule2 before",
+                "subclassMethodRule before");
+        assertNextEventsAre(events, "before1", "before2", "subclassBefore");
+        assertNextEventsAre(events, "test");
+        assertNextEventsAre(events, "after1", "after2", "subclassAfter");
+        assertNextEventsAre(events, "methodRule1 after", "methodRule2 after",
+                "subclassMethodRule after");
+        assertNextEventsAre(events, "fieldRule1 after", "fieldRule2 after",
+                "subclassFieldRule after");
     }
 }
