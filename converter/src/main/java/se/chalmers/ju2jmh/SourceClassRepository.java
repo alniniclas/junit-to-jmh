@@ -131,8 +131,6 @@ public class SourceClassRepository {
         @Override
         public SourceClass getSuperclass() {
             try {
-                System.out.println(bytecode.getClassName());
-                System.out.println(bytecode.getSuperclassName());
                 return findClass(bytecode.getSuperclassName());
             } catch (ClassNotFoundException e) {
                 return null;
