@@ -1,12 +1,12 @@
 package se.chalmers.ju2jmh;
 
-import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static se.chalmers.ju2jmh.AstMatcher.equalsAst;
 
 public class ExceptionTestRestructurerTest {
     private static final AstResourceLoader astLoader =
@@ -19,6 +19,6 @@ public class ExceptionTestRestructurerTest {
 
         ExceptionTestRestructurer.restructureExceptionTests(ast);
 
-        assertEquals(expected, StaticJavaParser.parse(ast.toString()));
+        assertThat(ast, equalsAst(expected));
     }
 }

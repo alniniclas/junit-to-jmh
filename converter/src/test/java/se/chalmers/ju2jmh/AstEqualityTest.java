@@ -5,8 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static se.chalmers.ju2jmh.AstMatcher.equalsAst;
 
 public class AstEqualityTest {
     private static final AstResourceLoader astLoader = new AstResourceLoader(AstEqualityTest.class);
@@ -16,7 +17,7 @@ public class AstEqualityTest {
         CompilationUnit helloWorld = astLoader.load("HelloWorld.java");
         CompilationUnit helloWorld2 = astLoader.load("HelloWorld.java");
 
-        assertEquals(helloWorld, helloWorld2);
+        assertThat(helloWorld2, equalsAst(helloWorld));
     }
 
     @Test
@@ -32,7 +33,7 @@ public class AstEqualityTest {
         CompilationUnit helloWorld = astLoader.load("HelloWorld.java");
         CompilationUnit helloWorldOneLine = astLoader.load("HelloWorld_Oneliner.java");
 
-        assertEquals(helloWorld, helloWorldOneLine);
+        assertThat(helloWorldOneLine, equalsAst(helloWorld));
     }
 
     @Test

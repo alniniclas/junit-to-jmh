@@ -1,5 +1,6 @@
 package se.chalmers.ju2jmh;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import se.chalmers.ju2jmh.testinput.*;
@@ -15,65 +16,26 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SourceClassRepositoryTest {
-    @TempDir
-    public Path sourcesDir;
+    private SourceClassDirectory sourceClassDirectory;
 
-    @TempDir
-    public Path classesDir;
-
-    private void copyResourceToFile(ClassLoader classLoader, String resource, Path basePath)
-            throws IOException, ClassNotFoundException {
-        File outputFile = basePath.resolve(resource.replace('/', File.separatorChar)).toFile();
-        if (outputFile.exists()) {
-            return;
-        }
-        outputFile.getParentFile().mkdirs();
-        outputFile.createNewFile();
-        try (InputStream in = classLoader.getResourceAsStream(resource)) {
-            if (in == null) {
-                throw new ClassNotFoundException("Could not find resource " + resource);
-            }
-            try (OutputStream out = new FileOutputStream(outputFile)) {
-                in.transferTo(out);
-            }
-        }
-    }
-
-    private static String baseResourceName(Class<?> clazz) {
-        return clazz.getName().replace('.', '/');
-    }
-
-    private void addSourceFiles(Class<?>... classes) throws IOException, ClassNotFoundException {
-        for (Class<?> clazz : classes) {
-            String baseResourceName = baseResourceName(clazz);
-            baseResourceName = baseResourceName.indexOf('$') < 0
-                    ? baseResourceName
-                    : baseResourceName.substring(0, baseResourceName.indexOf('$'));
-            ClassLoader classLoader = clazz.getClassLoader();
-            copyResourceToFile(classLoader, baseResourceName + ".java", sourcesDir);
-        }
-    }
-
-    private void addClassFiles(Class<?>... classes) throws IOException, ClassNotFoundException {
-        for (Class<?> clazz : classes) {
-            String baseResourceName = baseResourceName(clazz);
-            ClassLoader classLoader = clazz.getClassLoader();
-            copyResourceToFile(classLoader, baseResourceName + ".class", classesDir);
-        }
+    @BeforeEach
+    public void setUpSourceClassDir(@TempDir Path tempDir) {
+        sourceClassDirectory = new SourceClassDirectory(tempDir);
     }
 
     private SourceClassRepository makeRepository(Class<?>... classes)
             throws IOException, ClassNotFoundException {
-        addSourceFiles(classes);
-        addClassFiles(classes);
-        return new SourceClassRepository(sourcesDir.toString(), classesDir.toString());
+        for (Class<?> clazz : classes) {
+            sourceClassDirectory.add(clazz);
+        }
+        return new SourceClassRepository(sourceClassDirectory.sourcesDirectory().toString(),
+                sourceClassDirectory.bytecodeDirectory().toString());
     }
 
     @Test
     public void findsClassWithBytecodeAndSources() throws IOException, ClassNotFoundException {
         SourceClassRepository repository = makeRepository();
-        addSourceFiles(SimpleClass.class);
-        addClassFiles(SimpleClass.class);
+        sourceClassDirectory.add(SimpleClass.class);
         SourceClass simpleClass = repository.findClass(SimpleClass.class.getName());
         assertEquals(SimpleClass.class.getName(), simpleClass.getName());
     }
@@ -88,7 +50,7 @@ public class SourceClassRepositoryTest {
     @Test
     public void failsToFindClassWithAbsentSource() throws IOException, ClassNotFoundException {
         SourceClassRepository repository = makeRepository();
-        addClassFiles(SimpleClass.class);
+        sourceClassDirectory.addBytecode(SimpleClass.class);
         assertThrows(ClassNotFoundException.class,
                 () -> repository.findClass(SimpleClass.class.getName()));
     }
@@ -96,7 +58,7 @@ public class SourceClassRepositoryTest {
     @Test
     public void failsToFindClassWithAbsentBytecode() throws IOException, ClassNotFoundException {
         SourceClassRepository repository = makeRepository();
-        addSourceFiles(SimpleClass.class);
+        sourceClassDirectory.addSource(SimpleClass.class);
         assertThrows(ClassNotFoundException.class,
                 () -> repository.findClass(SimpleClass.class.getName()));
     }
@@ -149,8 +111,9 @@ public class SourceClassRepositoryTest {
     private void findsInterfaces(Class<?> implementingClass, Class<?>... interfaceClasses)
             throws IOException, ClassNotFoundException {
         SourceClassRepository repository = makeRepository(implementingClass);
-        addSourceFiles(interfaceClasses);
-        addClassFiles(interfaceClasses);
+        for (Class<?> clazz : interfaceClasses) {
+            sourceClassDirectory.add(clazz);
+        }
         SourceClass implementingSourceClass = repository.findClass(implementingClass.getName());
         List<String> interfaceNames = implementingSourceClass.getKnownInterfaces().stream()
                 .map(SourceClass::getName)
