@@ -14,6 +14,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * A repository for finding source code and bytecode of input classes.
+ */
 public class SourceClassRepository {
     private final Map<String, SourceClass> knownClasses = new HashMap<>();
     private final List<Path> sourcePath;
@@ -25,6 +28,14 @@ public class SourceClassRepository {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Creates a new SourceClassRepository reading sources and bytecode from the given root paths.
+     *
+     * @param sourcePath Root path(s) of the source files that can be loaded by this repository,
+     *                  separated by {@link File#pathSeparator}.
+     * @param classPath Root path(s) of the class files that can be loaded by this repository,
+     *                 separated by {@link File#pathSeparator}.
+     */
     public SourceClassRepository(String sourcePath, String classPath) {
         this.sourcePath = toPaths(sourcePath);
         this.classPath = toPaths(classPath);
@@ -53,6 +64,15 @@ public class SourceClassRepository {
                         new ClassNotFoundException("Found no source file for class " + name));
     }
 
+    /**
+     * Returns a {@link SourceClass} containing source code and bytecode for the class with the
+     * given name, if present in this repository.
+     *
+     * @param name The name of the class to load source code and bytecode for.
+     * @return A {@link SourceClass} representing the requested class.
+     * @throws ClassNotFoundException If the source code or bytecode for the given class name was
+     * absent or could otherwise not be loaded.
+     */
     public SourceClass findClass(String name) throws ClassNotFoundException {
         SourceClass sourceClass = knownClasses.get(name);
         if (sourceClass != null) {
@@ -75,7 +95,7 @@ public class SourceClassRepository {
                     + " from source file " + sourceFile, e);
         }
         sourceClass = new RepositorySourceClass(compilationUnit, bytecode);
-        if (sourceClass.getSource().typeDeclaration() == null) {
+        if (sourceClass.getSource() == null) {
             throw new ClassNotFoundException("Failed to find class " + name + " in source file "
                     + sourceFile);
         }
@@ -83,13 +103,15 @@ public class SourceClassRepository {
         return sourceClass;
     }
 
-    private class RepositorySourceClass implements SourceClass {
+    private static class RepositorySourceClass implements SourceClass {
         private final CompilationUnit source;
         private final JavaClass bytecode;
+        private final List<String> interfaceNames;
 
         public RepositorySourceClass(CompilationUnit source, JavaClass bytecode) {
             this.source = source;
             this.bytecode = bytecode;
+            interfaceNames = List.of(bytecode.getInterfaceNames());
         }
 
         @Override
@@ -105,7 +127,7 @@ public class SourceClassRepository {
         }
 
         @Override
-        public SourceTypeDeclaration getSource() {
+        public TypeDeclaration<?> getSource() {
             CompilationUnit compilationUnit = source.clone();
             String typeName = getName();
             typeName = typeName.substring(typeName.lastIndexOf('.') + 1);
@@ -119,7 +141,7 @@ public class SourceClassRepository {
                                 .map(t -> (TypeDeclaration<?>) t);
                 type = findTypeDeclaration(typeDeclarations, typeNames.remove());
             }
-            return new SourceTypeDeclarationImpl(compilationUnit, type);
+            return type;
         }
 
         @Override
@@ -128,44 +150,13 @@ public class SourceClassRepository {
         }
 
         @Override
-        public SourceClass getSuperclass() {
-            try {
-                return findClass(bytecode.getSuperclassName());
-            } catch (ClassNotFoundException e) {
-                return null;
-            }
+        public String getSuperclassName() {
+            return bytecode.getSuperclassName();
         }
 
         @Override
-        public List<SourceClass> getKnownInterfaces() {
-            return Arrays.stream(bytecode.getInterfaceNames()).map(i -> {
-                try {
-                    return findClass(i);
-                } catch (ClassNotFoundException e) {
-                    return null;
-                }
-            }).filter(Objects::nonNull).collect(Collectors.toUnmodifiableList());
-        }
-    }
-
-    private static class SourceTypeDeclarationImpl implements SourceClass.SourceTypeDeclaration {
-        private final CompilationUnit compilationUnit;
-        private final TypeDeclaration<?> typeDeclaration;
-
-        private SourceTypeDeclarationImpl(
-                CompilationUnit compilationUnit, TypeDeclaration<?> typeDeclaration) {
-            this.compilationUnit = compilationUnit;
-            this.typeDeclaration = typeDeclaration;
-        }
-
-        @Override
-        public CompilationUnit compilationUnit() {
-            return compilationUnit;
-        }
-
-        @Override
-        public TypeDeclaration<?> typeDeclaration() {
-            return typeDeclaration;
+        public List<String> getInterfaceNames() {
+            return interfaceNames;
         }
     }
 }

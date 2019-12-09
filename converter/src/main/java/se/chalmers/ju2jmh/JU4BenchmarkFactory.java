@@ -67,14 +67,15 @@ public class JU4BenchmarkFactory {
                 .anyMatch(a -> a.getAnnotationType().equals(J_UNIT_4_TEST_ANNOTATION));
     }
 
-    private static Stream<String> findTestMethods(SourceClass sourceClass) {
+    private Stream<String> findTestMethods(SourceClass sourceClass) {
         Stream<String> declaredTestMethods = Arrays.stream(sourceClass.getBytecode().getMethods())
                 .filter(isJUnit4Test())
                 .map(FieldOrMethod::getName);
-        SourceClass superclass = sourceClass.getSuperclass();
-        if (superclass != null) {
+        SourceClass superclass = null;
+        try {
+            superclass = repository.findClass(sourceClass.getSuperclassName());
             return Stream.concat(findTestMethods(superclass), declaredTestMethods).distinct();
-        } else {
+        } catch (ClassNotFoundException e) {
             return declaredTestMethods.distinct();
         }
     }
@@ -119,7 +120,7 @@ public class JU4BenchmarkFactory {
     public CompilationUnit createBenchmarkFromTest(String testClassName)
             throws ClassNotFoundException {
         SourceClass sourceClass = repository.findClass(testClassName);
-        SourceClass.SourceTypeDeclaration source = sourceClass.getSource();
+        TypeDeclaration<?> source = sourceClass.getSource();
         String testClassCanonicalNameWithoutPackage =
                 testClassName.substring(testClassName.lastIndexOf('.') + 1)
                         .replace('$', '.');
@@ -127,7 +128,9 @@ public class JU4BenchmarkFactory {
                 testClassCanonicalNameWithoutPackage.replace('.', '_') + "_JU4Benchmark";
         List<String> testMethodNames = findTestMethods(sourceClass)
                 .collect(Collectors.toUnmodifiableList());
-        String packageName = source.compilationUnit().getPackageDeclaration()
+        String packageName = source.findCompilationUnit()
+                .orElseThrow()
+                .getPackageDeclaration()
                 .map(NodeWithName::getNameAsString)
                 .orElse(null);
         return generateBenchmark(
