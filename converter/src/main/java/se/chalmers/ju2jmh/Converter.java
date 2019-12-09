@@ -8,6 +8,7 @@ import picocli.CommandLine;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -43,6 +44,12 @@ public class Converter implements Callable<Integer> {
                     + "runner.")
     private boolean ju4RunnerBenchmark;
 
+    @CommandLine.Option(
+            names = {"-i", "--ignore-failures"},
+            description = "Generate the remaining benchmark classes even if conversion of some "
+                    + "input classes fails.")
+    private boolean ignoreFailures;
+
     private void writeBenchmarkToFile(CompilationUnit benchmark, File outputFile)
             throws IOException {
         outputFile.getParentFile().mkdirs();
@@ -72,10 +79,20 @@ public class Converter implements Callable<Integer> {
         }
     }
 
-    private void generateJU4Benchmarks(InputClassRepository repository) throws ClassNotFoundException, IOException {
+    private void generateJU4Benchmarks(InputClassRepository repository)
+            throws ClassNotFoundException, IOException, InvalidInputClassException {
         JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
+        List<CompilationUnit> benchmarks = new ArrayList<>(classNames.size());
         for (String className : classNames) {
-            CompilationUnit benchmark = benchmarkFactory.createBenchmarkFromTest(className);
+            try {
+                benchmarks.add(benchmarkFactory.createBenchmarkFromTest(className));
+            } catch (BenchmarkGenerationException e) {
+                if (!ignoreFailures) {
+                    throw e;
+                }
+            }
+        }
+        for (CompilationUnit benchmark : benchmarks) {
             TypeDeclaration<?> benchmarkClass = benchmark.getTypes().get(0);
             String benchmarkClassName = benchmarkClass.getFullyQualifiedName().orElseThrow();
             File outputFile = outputPath.resolve(
@@ -85,7 +102,7 @@ public class Converter implements Callable<Integer> {
     }
 
     @Override
-    public Integer call() throws ClassNotFoundException, IOException {
+    public Integer call() throws ClassNotFoundException, IOException, InvalidInputClassException {
         InputClassRepository repository = new InputClassRepository(sourcePath, classPath);
         if (!outputPath.toFile().exists()) {
             throw new FileNotFoundException("Output directory " + outputPath + " does not exist");

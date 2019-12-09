@@ -12,6 +12,7 @@ import com.github.javaparser.ast.visitor.ModifierVisitor;
 import com.github.javaparser.ast.visitor.Visitable;
 import com.google.common.io.Resources;
 import org.apache.bcel.classfile.FieldOrMethod;
+import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.Method;
 
 import java.io.IOException;
@@ -67,14 +68,15 @@ public class JU4BenchmarkFactory {
                 .anyMatch(a -> a.getAnnotationType().equals(J_UNIT_4_TEST_ANNOTATION));
     }
 
-    private Stream<String> findTestMethods(InputClass inputClass) {
-        Stream<String> declaredTestMethods = Arrays.stream(inputClass.getBytecode().getMethods())
+    private Stream<String> findTestMethods(JavaClass bytecode) {
+        Stream<String> declaredTestMethods = Arrays.stream(bytecode.getMethods())
                 .filter(isJUnit4Test())
                 .map(FieldOrMethod::getName);
         InputClass superclass = null;
         try {
-            superclass = repository.findClass(inputClass.getSuperclassName());
-            return Stream.concat(findTestMethods(superclass), declaredTestMethods).distinct();
+            superclass = repository.findClass(bytecode.getSuperclassName());
+            return Stream.concat(findTestMethods(superclass.getBytecode()), declaredTestMethods)
+                    .distinct();
         } catch (ClassNotFoundException e) {
             return declaredTestMethods.distinct();
         }
@@ -118,23 +120,31 @@ public class JU4BenchmarkFactory {
     }
 
     public CompilationUnit createBenchmarkFromTest(String testClassName)
-            throws ClassNotFoundException {
+            throws ClassNotFoundException, InvalidInputClassException {
         InputClass inputClass = repository.findClass(testClassName);
         TypeDeclaration<?> source = inputClass.getSource();
-        String testClassCanonicalNameWithoutPackage =
-                testClassName.substring(testClassName.lastIndexOf('.') + 1)
-                        .replace('$', '.');
-        String benchmarkClassName =
-                testClassCanonicalNameWithoutPackage.replace('.', '_') + "_JU4Benchmark";
-        List<String> testMethodNames = findTestMethods(inputClass)
-                .collect(Collectors.toUnmodifiableList());
+        JavaClass bytecode = inputClass.getBytecode();
+        if (bytecode.isAbstract() || bytecode.isInterface()) {
+            throw new InvalidInputClassException("Input class" + testClassName
+                    + " is abstract or an interface.");
+        }
         String packageName = source.findCompilationUnit()
                 .orElseThrow()
                 .getPackageDeclaration()
                 .map(NodeWithName::getNameAsString)
                 .orElse(null);
+        String testClassShortCanonicalName =
+                testClassName.substring(testClassName.lastIndexOf('.') + 1)
+                        .replace('$', '.');
+        String benchmarkClassName =
+                testClassShortCanonicalName.replace('.', '_') + "_JU4Benchmark";
+        List<String> testMethodNames = findTestMethods(bytecode)
+                .collect(Collectors.toUnmodifiableList());
+        if (testMethodNames.isEmpty()) {
+            throw new InvalidInputClassException(
+                    "Found no test methods for input class " + testClassName + ".");
+        }
         return generateBenchmark(
-                packageName, benchmarkClassName,
-                testClassCanonicalNameWithoutPackage, testMethodNames);
+                packageName, benchmarkClassName, testClassShortCanonicalName, testMethodNames);
     }
 }
