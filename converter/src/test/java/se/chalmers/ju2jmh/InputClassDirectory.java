@@ -3,18 +3,18 @@ package se.chalmers.ju2jmh;
 import java.io.*;
 import java.nio.file.Path;
 
-public final class SourceClassDirectory {
+public final class InputClassDirectory {
     private final Path sourcesDirectory;
     private final Path bytecodeDirectory;
 
-    public SourceClassDirectory(Path baseDirectory) {
+    public InputClassDirectory(Path baseDirectory) {
         sourcesDirectory = baseDirectory.resolve("src");
         bytecodeDirectory = baseDirectory.resolve("classes");
     }
 
-    public static SourceClassDirectory directoryWithClasses(Path baseDirectory, Class<?>... classes)
+    public static InputClassDirectory directoryWithClasses(Path baseDirectory, Class<?>... classes)
             throws IOException, ClassNotFoundException {
-        SourceClassDirectory directory = new SourceClassDirectory(baseDirectory);
+        InputClassDirectory directory = new InputClassDirectory(baseDirectory);
         for (Class<?> clazz : classes) {
             directory.add(clazz);
         }

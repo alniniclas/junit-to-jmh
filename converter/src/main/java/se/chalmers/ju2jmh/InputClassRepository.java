@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 /**
  * A repository for finding source code and bytecode of input classes.
  */
-public class SourceClassRepository {
-    private final Map<String, SourceClass> knownClasses = new HashMap<>();
+public class InputClassRepository {
+    private final Map<String, InputClass> knownClasses = new HashMap<>();
     private final List<Path> sourcePath;
     private final List<Path> classPath;
 
@@ -29,14 +29,14 @@ public class SourceClassRepository {
     }
 
     /**
-     * Creates a new SourceClassRepository reading sources and bytecode from the given root paths.
+     * Creates a new InputClassRepository reading sources and bytecode from the given root paths.
      *
      * @param sourcePath Root path(s) of the source files that can be loaded by this repository,
      *                  separated by {@link File#pathSeparator}.
      * @param classPath Root path(s) of the class files that can be loaded by this repository,
      *                 separated by {@link File#pathSeparator}.
      */
-    public SourceClassRepository(String sourcePath, String classPath) {
+    public InputClassRepository(String sourcePath, String classPath) {
         this.sourcePath = toPaths(sourcePath);
         this.classPath = toPaths(classPath);
     }
@@ -65,18 +65,18 @@ public class SourceClassRepository {
     }
 
     /**
-     * Returns a {@link SourceClass} containing source code and bytecode for the class with the
+     * Returns a {@link InputClass} containing source code and bytecode for the class with the
      * given name, if present in this repository.
      *
      * @param name The name of the class to load source code and bytecode for.
-     * @return A {@link SourceClass} representing the requested class.
+     * @return An {@link InputClass} representing the requested class.
      * @throws ClassNotFoundException If the source code or bytecode for the given class name was
      * absent or could otherwise not be loaded.
      */
-    public SourceClass findClass(String name) throws ClassNotFoundException {
-        SourceClass sourceClass = knownClasses.get(name);
-        if (sourceClass != null) {
-            return sourceClass;
+    public InputClass findClass(String name) throws ClassNotFoundException {
+        InputClass inputClass = knownClasses.get(name);
+        if (inputClass != null) {
+            return inputClass;
         }
         Path bytecodeFile = findBytecodeFile(name);
         JavaClass bytecode;
@@ -94,21 +94,21 @@ public class SourceClassRepository {
             throw new ClassNotFoundException("Failed to read source for class " + name
                     + " from source file " + sourceFile, e);
         }
-        sourceClass = new RepositorySourceClass(compilationUnit, bytecode);
-        if (sourceClass.getSource() == null) {
+        inputClass = new RepositoryInputClass(compilationUnit, bytecode);
+        if (inputClass.getSource() == null) {
             throw new ClassNotFoundException("Failed to find class " + name + " in source file "
                     + sourceFile);
         }
-        knownClasses.put(name, sourceClass);
-        return sourceClass;
+        knownClasses.put(name, inputClass);
+        return inputClass;
     }
 
-    private static class RepositorySourceClass implements SourceClass {
+    private static class RepositoryInputClass implements InputClass {
         private final CompilationUnit source;
         private final JavaClass bytecode;
         private final List<String> interfaceNames;
 
-        public RepositorySourceClass(CompilationUnit source, JavaClass bytecode) {
+        public RepositoryInputClass(CompilationUnit source, JavaClass bytecode) {
             this.source = source;
             this.bytecode = bytecode;
             interfaceNames = List.of(bytecode.getInterfaceNames());

@@ -30,7 +30,7 @@ public class JU4BenchmarkFactory {
     private static final String J_UNIT_4_TEST_ANNOTATION = "Lorg/junit/Test;";
     private static final String TEST_CLASS_PLACEHOLDER = "TEST_CLASS";
     private static final String TEST_METHOD_NAME_PLACEHOLDER = "TEST_METHOD_NAME";
-    private final SourceClassRepository repository;
+    private final InputClassRepository repository;
 
     public static class BenchmarkTemplateException extends RuntimeException {
         public BenchmarkTemplateException(String message, Throwable cause) {
@@ -38,7 +38,7 @@ public class JU4BenchmarkFactory {
         }
     }
 
-    public JU4BenchmarkFactory(SourceClassRepository repository) {
+    public JU4BenchmarkFactory(InputClassRepository repository) {
         this.repository = repository;
     }
 
@@ -67,13 +67,13 @@ public class JU4BenchmarkFactory {
                 .anyMatch(a -> a.getAnnotationType().equals(J_UNIT_4_TEST_ANNOTATION));
     }
 
-    private Stream<String> findTestMethods(SourceClass sourceClass) {
-        Stream<String> declaredTestMethods = Arrays.stream(sourceClass.getBytecode().getMethods())
+    private Stream<String> findTestMethods(InputClass inputClass) {
+        Stream<String> declaredTestMethods = Arrays.stream(inputClass.getBytecode().getMethods())
                 .filter(isJUnit4Test())
                 .map(FieldOrMethod::getName);
-        SourceClass superclass = null;
+        InputClass superclass = null;
         try {
-            superclass = repository.findClass(sourceClass.getSuperclassName());
+            superclass = repository.findClass(inputClass.getSuperclassName());
             return Stream.concat(findTestMethods(superclass), declaredTestMethods).distinct();
         } catch (ClassNotFoundException e) {
             return declaredTestMethods.distinct();
@@ -119,14 +119,14 @@ public class JU4BenchmarkFactory {
 
     public CompilationUnit createBenchmarkFromTest(String testClassName)
             throws ClassNotFoundException {
-        SourceClass sourceClass = repository.findClass(testClassName);
-        TypeDeclaration<?> source = sourceClass.getSource();
+        InputClass inputClass = repository.findClass(testClassName);
+        TypeDeclaration<?> source = inputClass.getSource();
         String testClassCanonicalNameWithoutPackage =
                 testClassName.substring(testClassName.lastIndexOf('.') + 1)
                         .replace('$', '.');
         String benchmarkClassName =
                 testClassCanonicalNameWithoutPackage.replace('.', '_') + "_JU4Benchmark";
-        List<String> testMethodNames = findTestMethods(sourceClass)
+        List<String> testMethodNames = findTestMethods(inputClass)
                 .collect(Collectors.toUnmodifiableList());
         String packageName = source.findCompilationUnit()
                 .orElseThrow()

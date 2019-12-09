@@ -15,18 +15,18 @@ import static se.chalmers.ju2jmh.AstMatcher.equalsAst;
 public class JU4BenchmarkFactoryTest {
     private static final AstResourceLoader astLoader =
             new AstResourceLoader(JU4BenchmarkFactoryTest.class);
-    private static SourceClassRepository repository;
+    private static InputClassRepository repository;
 
     @BeforeAll
     public static void setUpRepository(@TempDir Path tempDir)
             throws IOException, ClassNotFoundException {
-        SourceClassDirectory sourceClassDirectory = SourceClassDirectory.directoryWithClasses(
+        InputClassDirectory inputClassDirectory = InputClassDirectory.directoryWithClasses(
                 tempDir, SimpleUnitTest.class, TwoTestCases.class, TestImplementation.class,
                 TestAbstractClass.class, TestInterface.class, TestImplementationSubclass.class,
                 TestOverridingImplementation.class, ClassWithNestedTests.class,
                 ClassWithNestedTests.Nested.class, ClassWithNestedTests.Nested.NestedNested.class);
-        repository = new SourceClassRepository(sourceClassDirectory.sourcesDirectory().toString(),
-                sourceClassDirectory.bytecodeDirectory().toString());
+        repository = new InputClassRepository(inputClassDirectory.sourcesDirectory().toString(),
+                inputClassDirectory.bytecodeDirectory().toString());
     }
 
     private static String shortClassName(Class<?> clazz) {

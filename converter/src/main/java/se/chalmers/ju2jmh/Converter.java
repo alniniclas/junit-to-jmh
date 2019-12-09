@@ -53,17 +53,17 @@ public class Converter implements Callable<Integer> {
         }
     }
 
-    private void generateRegularBenchmarks(SourceClassRepository repository)
+    private void generateRegularBenchmarks(InputClassRepository repository)
             throws ClassNotFoundException, IOException {
         for (String className : classNames) {
-            SourceClass sourceClass = repository.findClass(className);
-            CompilationUnit ast = sourceClass.getSource().findCompilationUnit().orElseThrow();
+            InputClass inputClass = repository.findClass(className);
+            CompilationUnit ast = inputClass.getSource().findCompilationUnit().orElseThrow();
             ExceptionTestRestructurer.restructureExceptionTests(ast);
             JmhAnnotationAdder.addBenchmarkAnnotations(ast);
             if (improveFixture) {
                 JmhFixtureImprover.improveFixture(ast);
             }
-            JavaClass bytecode = sourceClass.getBytecode();
+            JavaClass bytecode = inputClass.getBytecode();
             File outputFile =
                     outputPath.resolve(bytecode.getPackageName().replace('.', File.separatorChar))
                             .resolve(bytecode.getSourceFileName())
@@ -72,7 +72,7 @@ public class Converter implements Callable<Integer> {
         }
     }
 
-    private void generateJU4Benchmarks(SourceClassRepository repository) throws ClassNotFoundException, IOException {
+    private void generateJU4Benchmarks(InputClassRepository repository) throws ClassNotFoundException, IOException {
         JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
         for (String className : classNames) {
             CompilationUnit benchmark = benchmarkFactory.createBenchmarkFromTest(className);
@@ -86,7 +86,7 @@ public class Converter implements Callable<Integer> {
 
     @Override
     public Integer call() throws ClassNotFoundException, IOException {
-        SourceClassRepository repository = new SourceClassRepository(sourcePath, classPath);
+        InputClassRepository repository = new InputClassRepository(sourcePath, classPath);
         if (!outputPath.toFile().exists()) {
             throw new FileNotFoundException("Output directory " + outputPath + " does not exist");
         }

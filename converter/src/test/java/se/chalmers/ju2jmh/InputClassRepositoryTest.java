@@ -13,75 +13,75 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SourceClassRepositoryTest {
-    private SourceClassDirectory sourceClassDirectory;
+public class InputClassRepositoryTest {
+    private InputClassDirectory inputClassDirectory;
 
     @BeforeEach
-    public void setUpSourceClassDir(@TempDir Path tempDir) {
-        sourceClassDirectory = new SourceClassDirectory(tempDir);
+    public void setUpInputClassDir(@TempDir Path tempDir) {
+        inputClassDirectory = new InputClassDirectory(tempDir);
     }
 
-    private SourceClassRepository makeRepository(Class<?>... classes)
+    private InputClassRepository makeRepository(Class<?>... classes)
             throws IOException, ClassNotFoundException {
         for (Class<?> clazz : classes) {
-            sourceClassDirectory.add(clazz);
+            inputClassDirectory.add(clazz);
         }
-        return new SourceClassRepository(sourceClassDirectory.sourcesDirectory().toString(),
-                sourceClassDirectory.bytecodeDirectory().toString());
+        return new InputClassRepository(inputClassDirectory.sourcesDirectory().toString(),
+                inputClassDirectory.bytecodeDirectory().toString());
     }
 
     @Test
     public void findsClassWithBytecodeAndSources() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository();
-        sourceClassDirectory.add(SimpleClass.class);
-        SourceClass simpleClass = repository.findClass(SimpleClass.class.getName());
+        InputClassRepository repository = makeRepository();
+        inputClassDirectory.add(SimpleClass.class);
+        InputClass simpleClass = repository.findClass(SimpleClass.class.getName());
         assertEquals(SimpleClass.class.getName(), simpleClass.getName());
     }
 
     @Test
     public void failsToFindAbsentClass() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository();
+        InputClassRepository repository = makeRepository();
         assertThrows(ClassNotFoundException.class,
                 () -> repository.findClass(SimpleClass.class.getName()));
     }
 
     @Test
     public void failsToFindClassWithAbsentSource() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository();
-        sourceClassDirectory.addBytecode(SimpleClass.class);
+        InputClassRepository repository = makeRepository();
+        inputClassDirectory.addBytecode(SimpleClass.class);
         assertThrows(ClassNotFoundException.class,
                 () -> repository.findClass(SimpleClass.class.getName()));
     }
 
     @Test
     public void failsToFindClassWithAbsentBytecode() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository();
-        sourceClassDirectory.addSource(SimpleClass.class);
+        InputClassRepository repository = makeRepository();
+        inputClassDirectory.addSource(SimpleClass.class);
         assertThrows(ClassNotFoundException.class,
                 () -> repository.findClass(SimpleClass.class.getName()));
     }
 
     @Test
     public void returnsSameObject() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository(SimpleClass.class);
-        SourceClass first = repository.findClass(SimpleClass.class.getName());
-        SourceClass second = repository.findClass(SimpleClass.class.getName());
+        InputClassRepository repository = makeRepository(SimpleClass.class);
+        InputClass first = repository.findClass(SimpleClass.class.getName());
+        InputClass second = repository.findClass(SimpleClass.class.getName());
         assertSame(first, second);
     }
 
     @Test
     public void findsPresentSuperclassName() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository =
+        InputClassRepository repository =
                 makeRepository(SimpleSubclass.class, SimpleSuperclass.class);
-        SourceClass subclass = repository.findClass(SimpleSubclass.class.getName());
+        InputClass subclass = repository.findClass(SimpleSubclass.class.getName());
         String superclassName = subclass.getSuperclassName();
         assertEquals(SimpleSuperclass.class.getName(), superclassName);
     }
 
     @Test
     public void findsAbsentSuperclassName() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository(SimpleSubclass.class);
-        SourceClass subclass = repository.findClass(SimpleSubclass.class.getName());
+        InputClassRepository repository = makeRepository(SimpleSubclass.class);
+        InputClass subclass = repository.findClass(SimpleSubclass.class.getName());
         String superclassName = subclass.getSuperclassName();
         assertEquals(SimpleSuperclass.class.getName(), superclassName);
     }
@@ -95,23 +95,23 @@ public class SourceClassRepositoryTest {
                 NestedClasses.AbstractInner.class, NestedClasses.InnerWithInner.class,
                 NestedClasses.InnerWithInner.InnerInner.class
         };
-        SourceClassRepository repository = makeRepository(classes);
+        InputClassRepository repository = makeRepository(classes);
         for (Class<?> clazz : classes) {
-            SourceClass sourceClass = repository.findClass(clazz.getName());
-            assertEquals(clazz.getName(), sourceClass.getName());
+            InputClass inputClass = repository.findClass(clazz.getName());
+            assertEquals(clazz.getName(), inputClass.getName());
             String sourceSimpleName =
-                    sourceClass.getSource().getName().asString();
+                    inputClass.getSource().getName().asString();
             assertEquals(clazz.getSimpleName(), sourceSimpleName);
         }
     }
 
     @Test
     public void findsPresentInterfaceNames() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository(
+        InputClassRepository repository = makeRepository(
                 SimpleClassWithInterfaces.class, SimpleInterface1.class, SimpleInterface2.class);
-        SourceClass implementingSourceClass =
+        InputClass implementingInputClass =
                 repository.findClass(SimpleClassWithInterfaces.class.getName());
-        List<String> interfaceNames = implementingSourceClass.getInterfaceNames();
+        List<String> interfaceNames = implementingInputClass.getInterfaceNames();
 
         assertThat(interfaceNames, containsInAnyOrder(
                 SimpleInterface1.class.getName(), SimpleInterface2.class.getName()));
@@ -119,10 +119,10 @@ public class SourceClassRepositoryTest {
 
     @Test
     public void findsAbsentInterfaceNames() throws IOException, ClassNotFoundException {
-        SourceClassRepository repository = makeRepository(SimpleClassWithInterfaces.class);
-        SourceClass implementingSourceClass =
+        InputClassRepository repository = makeRepository(SimpleClassWithInterfaces.class);
+        InputClass implementingInputClass =
                 repository.findClass(SimpleClassWithInterfaces.class.getName());
-        List<String> interfaceNames = implementingSourceClass.getInterfaceNames();
+        List<String> interfaceNames = implementingInputClass.getInterfaceNames();
 
         assertThat(interfaceNames, containsInAnyOrder(
                 SimpleInterface1.class.getName(), SimpleInterface2.class.getName()));

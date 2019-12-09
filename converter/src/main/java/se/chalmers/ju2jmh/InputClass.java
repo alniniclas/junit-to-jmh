@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * A Java class with source code and bytecode, used as input for the converter.
  */
-public interface SourceClass {
+public interface InputClass {
     /**
      * Returns the name of this class.
      */
