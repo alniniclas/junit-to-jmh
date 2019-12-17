@@ -6,7 +6,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
 @State(Scope.Thread)
-public final class BENCHMARK_TEMPLATE {
+public class BENCHMARK_TEMPLATE {
     private Class<?> testClass = TEST_CLASS;
     private JUnitCore runner = new JUnitCore();
 
