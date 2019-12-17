@@ -1,6 +1,10 @@
 package se.chalmers.ju2jmh;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 
 public final class InputClassDirectory {
@@ -39,22 +43,12 @@ public final class InputClassDirectory {
         }
     }
 
-    private static String baseResourceName(Class<?> clazz) {
-        return clazz.getName().replace('.', '/');
-    }
-
     private static String sourceResourceName(Class<?> clazz) {
-        String base = baseResourceName(clazz);
-        int nestedClassMarkerIndex = base.indexOf('$');
-        if (nestedClassMarkerIndex < 0) {
-            return base + ".java";
-        } else {
-            return base.substring(0, nestedClassMarkerIndex) + ".java";
-        }
+        return ClassNames.outermostClassName(clazz).replace('.', '/') + ".java";
     }
 
     private static String bytecodeResourceName(Class<?> clazz) {
-        return baseResourceName(clazz) + ".class";
+        return clazz.getName().replace('.', '/') + ".class";
     }
 
     public void add(Class<?> clazz) throws IOException, ClassNotFoundException {

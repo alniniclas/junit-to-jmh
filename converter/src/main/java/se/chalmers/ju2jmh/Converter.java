@@ -5,12 +5,18 @@ import com.github.javaparser.ast.body.TypeDeclaration;
 import org.apache.bcel.classfile.JavaClass;
 import picocli.CommandLine;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 @CommandLine.Command(name = "ju2jmh", mixinStandardHelpOptions = true)
 public class Converter implements Callable<Integer> {
@@ -101,9 +107,16 @@ public class Converter implements Callable<Integer> {
         }
     }
 
+    private static List<Path> toPaths(String pathString) {
+        return Arrays.stream(pathString.split(File.pathSeparator))
+                .map(p -> Path.of(p))
+                .collect(Collectors.toUnmodifiableList());
+    }
+
     @Override
     public Integer call() throws ClassNotFoundException, IOException, InvalidInputClassException {
-        InputClassRepository repository = new InputClassRepository(sourcePath, classPath);
+        InputClassRepository repository =
+                new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
         if (!outputPath.toFile().exists()) {
             throw new FileNotFoundException("Output directory " + outputPath + " does not exist");
         }

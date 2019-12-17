@@ -10,7 +10,13 @@ import org.apache.bcel.classfile.JavaClass;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -22,23 +28,26 @@ public class InputClassRepository {
     private final List<Path> sourcePath;
     private final List<Path> classPath;
 
-    private static List<Path> toPaths(String pathString) {
-        return Arrays.stream(pathString.split(File.pathSeparator))
-                .map(p -> Path.of(p))
-                .collect(Collectors.toList());
+    /**
+     * Creates a new InputClassRepository reading sources and bytecode from the given root paths.
+     *
+     * @param sourcePaths Root paths of the source files that can be loaded by this repository.
+     * @param classPath   Root paths of the class files that can be loaded by this repository.
+     */
+    public InputClassRepository(List<Path> sourcePaths, List<Path> classPath) {
+        this.sourcePath = sourcePaths.stream().collect(Collectors.toUnmodifiableList());
+        this.classPath = classPath.stream().collect(Collectors.toUnmodifiableList());
     }
 
     /**
      * Creates a new InputClassRepository reading sources and bytecode from the given root paths.
      *
-     * @param sourcePath Root path(s) of the source files that can be loaded by this repository,
-     *                  separated by {@link File#pathSeparator}.
-     * @param classPath Root path(s) of the class files that can be loaded by this repository,
-     *                 separated by {@link File#pathSeparator}.
+     * @param sourcePath Root path of the source files that can be loaded by this repository.
+     * @param classPath  Root path of the class files that can be loaded by this repository.
      */
-    public InputClassRepository(String sourcePath, String classPath) {
-        this.sourcePath = toPaths(sourcePath);
-        this.classPath = toPaths(classPath);
+    public InputClassRepository(Path sourcePath, Path classPath) {
+        this.sourcePath = List.of(sourcePath);
+        this.classPath = List.of(classPath);
     }
 
     private static Optional<Path> findFirstExisting(List<Path> basePaths, String relativePath) {
@@ -56,10 +65,9 @@ public class InputClassRepository {
     }
 
     private Path findSourceFile(String name) throws ClassNotFoundException {
-        String outerClassName = name.indexOf('$') < 0 ? name : name.substring(0, name.indexOf('$'));
-        String outerClassSourceFileName =
-                outerClassName.replace('.', File.separatorChar) + ".java";
-        return findFirstExisting(sourcePath, outerClassSourceFileName)
+        String sourceFileName = ClassNames.outermostClassName(name)
+                .replace('.', File.separatorChar) + ".java";
+        return findFirstExisting(sourcePath, sourceFileName)
                 .orElseThrow(() ->
                         new ClassNotFoundException("Found no source file for class " + name));
     }
@@ -129,8 +137,7 @@ public class InputClassRepository {
         @Override
         public TypeDeclaration<?> getSource() {
             CompilationUnit compilationUnit = source.clone();
-            String typeName = getName();
-            typeName = typeName.substring(typeName.lastIndexOf('.') + 1);
+            String typeName = ClassNames.shortClassName(getName());
             Queue<String> typeNames = new ArrayDeque<>(Arrays.asList(typeName.split("\\$")));
             TypeDeclaration<?> type =
                     findTypeDeclaration(compilationUnit.getTypes().stream(), typeNames.remove());

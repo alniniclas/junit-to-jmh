@@ -10,14 +10,10 @@ import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithName;
 import com.github.javaparser.ast.visitor.ModifierVisitor;
 import com.github.javaparser.ast.visitor.Visitable;
-import com.google.common.io.Resources;
 import org.apache.bcel.classfile.FieldOrMethod;
 import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.Method;
 
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
@@ -25,42 +21,25 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JU4BenchmarkFactory {
-    private static final String CLASS_TEMPLATE_NAME = "templates/ju4_benchmark/class_template.java";
-    private static final String METHOD_TEMPLATE_NAME =
-            "templates/ju4_benchmark/method_template.java";
+    private static final CompilationUnit CLASS_TEMPLATE =
+            AstTemplates.compilationUnit("templates/ju4_benchmark/class_template.java");
+    private static final MethodDeclaration METHOD_TEMPLATE =
+            AstTemplates.method("templates/ju4_benchmark/method_template.java");
     private static final String J_UNIT_4_TEST_ANNOTATION = "Lorg/junit/Test;";
     private static final String TEST_CLASS_PLACEHOLDER = "TEST_CLASS";
     private static final String TEST_METHOD_NAME_PLACEHOLDER = "TEST_METHOD_NAME";
     private final InputClassRepository repository;
 
-    public static class BenchmarkTemplateException extends RuntimeException {
-        public BenchmarkTemplateException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
-
     public JU4BenchmarkFactory(InputClassRepository repository) {
         this.repository = repository;
     }
 
-    private static String loadTemplate(String templateName) {
-        @SuppressWarnings("UnstableApiUsage")
-        URL resourceUrl = Resources.getResource(templateName);
-        try {
-            @SuppressWarnings("UnstableApiUsage")
-            String template = Resources.toString(resourceUrl, StandardCharsets.UTF_8);
-            return template;
-        } catch (IOException e) {
-            throw new BenchmarkTemplateException("Failed to load benchmark template", e);
-        }
+    private static CompilationUnit classTemplate() {
+        return CLASS_TEMPLATE.clone();
     }
 
-    private static CompilationUnit loadClassTemplate() {
-        return StaticJavaParser.parse(loadTemplate(CLASS_TEMPLATE_NAME));
-    }
-
-    private static MethodDeclaration loadMethodTemplate() {
-        return StaticJavaParser.parseMethodDeclaration(loadTemplate(METHOD_TEMPLATE_NAME));
+    private static MethodDeclaration methodTemplate() {
+        return METHOD_TEMPLATE.clone();
     }
 
     private static Predicate<Method> isJUnit4Test() {
@@ -72,7 +51,7 @@ public class JU4BenchmarkFactory {
         Stream<String> declaredTestMethods = Arrays.stream(bytecode.getMethods())
                 .filter(isJUnit4Test())
                 .map(FieldOrMethod::getName);
-        InputClass superclass = null;
+        InputClass superclass;
         try {
             superclass = repository.findClass(bytecode.getSuperclassName());
             return Stream.concat(findTestMethods(superclass.getBytecode()), declaredTestMethods)
@@ -98,7 +77,7 @@ public class JU4BenchmarkFactory {
     private CompilationUnit generateBenchmark(
             String packageName, String benchmarkClassName, String testClassName,
             List<String> testMethodNames) {
-        CompilationUnit output = loadClassTemplate();
+        CompilationUnit output = classTemplate();
         if (packageName != null) {
             output.setPackageDeclaration(packageName);
         }
@@ -108,12 +87,12 @@ public class JU4BenchmarkFactory {
                 testClassName + ".class");
         outputClass.accept(
                 expressionReplacementVisitor(TEST_CLASS_PLACEHOLDER, testClassExpression), null);
-        MethodDeclaration methodTemplate = loadMethodTemplate();
+        MethodDeclaration methodTemplate = methodTemplate();
         for (String testMethodName : testMethodNames) {
             MethodDeclaration benchmarkMethod = methodTemplate.clone();
             benchmarkMethod.setName("benchmark_" + testMethodName);
             benchmarkMethod.accept(expressionReplacementVisitor(
-                    TEST_METHOD_NAME_PLACEHOLDER, new StringLiteralExpr(testMethodName)),null);
+                    TEST_METHOD_NAME_PLACEHOLDER, new StringLiteralExpr(testMethodName)), null);
             outputClass.addMember(benchmarkMethod);
         }
         return output;
@@ -133,9 +112,8 @@ public class JU4BenchmarkFactory {
                 .getPackageDeclaration()
                 .map(NodeWithName::getNameAsString)
                 .orElse(null);
-        String testClassShortCanonicalName =
-                testClassName.substring(testClassName.lastIndexOf('.') + 1)
-                        .replace('$', '.');
+        String testClassShortCanonicalName = ClassNames.shortClassName(testClassName)
+                .replace('$', '.');
         String benchmarkClassName =
                 testClassShortCanonicalName.replace('.', '_') + "_JU4Benchmark";
         List<String> testMethodNames = findTestMethods(bytecode)

@@ -11,7 +11,14 @@ import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
 import org.junit.runners.model.Statement;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
 import java.util.concurrent.TimeUnit;
 
@@ -20,8 +27,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(time = 100, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(time = 100, timeUnit = TimeUnit.MILLISECONDS)
-public class ComplexTestSubclass_Benchmark extends ComplexTestSuperclass_Benchmark
-        implements Ju2JmhBenchmarkScaffold {
+public class ComplexTestSubclass_Benchmark extends ComplexTestSuperclass_Benchmark {
     public static class Implementation extends ComplexTestSuperclass_Benchmark.Implementation {
         @Rule
         public TestRule subclassRuleField = RuleChain.emptyRuleChain();
@@ -42,11 +48,9 @@ public class ComplexTestSubclass_Benchmark extends ComplexTestSuperclass_Benchma
     }
 
     @Benchmark
-    public void subclassTest_invokeThroughStaticClass() throws Throwable {
-        createImplementation();
-        Description description = Description.createTestDescription(implementation().getClass(),
-                "subclassTest");
-        runBenchmark(implementation()::subclassTest, description);
+    public void subclassTest_invokeThroughMethodReference() throws Throwable {
+        this.createImplementation();
+        this.runBenchmark(this.implementation()::subclassTest, this.description("subclassTest"));
     }
 
     @Benchmark
@@ -78,28 +82,28 @@ public class ComplexTestSubclass_Benchmark extends ComplexTestSuperclass_Benchma
     }
 
     @Override
-    public void before() {
+    public void before() throws Throwable {
         super.before();
         implementation().superclassBefore();
     }
 
     @Override
-    public void after() {
-        super.after();
+    public void after() throws Throwable {
         implementation().superclassAfter();
+        super.after();
     }
 
     @Override
     public Statement applyRuleFields(Statement statement, Description description) {
-        statement = super.applyRuleFields(statement, description);
         statement = implementation().subclassRuleField.apply(statement, description);
+        statement = super.applyRuleFields(statement, description);
         return statement;
     }
 
     @Override
     public Statement applyRuleMethods(Statement statement, Description description) {
-        statement = super.applyRuleMethods(statement, description);
         statement = implementation().subclassRuleMethod().apply(statement, description);
+        statement = super.applyRuleMethods(statement, description);
         return statement;
     }
 }

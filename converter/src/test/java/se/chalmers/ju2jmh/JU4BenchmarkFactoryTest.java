@@ -5,7 +5,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import se.chalmers.ju2jmh.testinput.SimpleClass;
-import se.chalmers.ju2jmh.testinput.unittests.*;
+import se.chalmers.ju2jmh.testinput.unittests.ClassWithNestedTests;
+import se.chalmers.ju2jmh.testinput.unittests.SimpleUnitTest;
+import se.chalmers.ju2jmh.testinput.unittests.TestAbstractClass;
+import se.chalmers.ju2jmh.testinput.unittests.TestImplementation;
+import se.chalmers.ju2jmh.testinput.unittests.TestImplementationSubclass;
+import se.chalmers.ju2jmh.testinput.unittests.TestInterface;
+import se.chalmers.ju2jmh.testinput.unittests.TestOverridingImplementation;
+import se.chalmers.ju2jmh.testinput.unittests.TwoTestCases;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -28,20 +35,15 @@ public class JU4BenchmarkFactoryTest {
                 TestOverridingImplementation.class, ClassWithNestedTests.class,
                 ClassWithNestedTests.Nested.class, ClassWithNestedTests.Nested.NestedNested.class,
                 SimpleClass.class);
-        repository = new InputClassRepository(inputClassDirectory.sourcesDirectory().toString(),
-                inputClassDirectory.bytecodeDirectory().toString());
-    }
-
-    private static String shortClassName(Class<?> clazz) {
-        String className = clazz.getName();
-        return clazz.getName().substring(className.lastIndexOf('.') + 1).replace('$', '.');
+        repository = new InputClassRepository(inputClassDirectory.sourcesDirectory(),
+                inputClassDirectory.bytecodeDirectory());
     }
 
     public void assertProducesExpectedOutput(Class<?> clazz)
             throws IOException, ClassNotFoundException, InvalidInputClassException {
         JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
         CompilationUnit expected = astLoader.load(
-                shortClassName(clazz).replace('.', '_') + "_Expected.java");
+                ClassNames.shortClassName(clazz).replace('$', '_') + "_Expected.java");
         CompilationUnit generated = benchmarkFactory.createBenchmarkFromTest(clazz.getName());
         assertThat(generated, equalsAst(expected));
     }

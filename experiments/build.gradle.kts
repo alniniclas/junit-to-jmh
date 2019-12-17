@@ -12,6 +12,7 @@ dependencies {
     testImplementation("junit", "junit", jUnit4Version)
 
     jmh("junit", "junit", jUnit4Version)
+    jmh(project(":api"))
 }
 
 jmh {

@@ -3,7 +3,13 @@ package se.chalmers.ju2jmh;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import se.chalmers.ju2jmh.testinput.*;
+import se.chalmers.ju2jmh.testinput.NestedClasses;
+import se.chalmers.ju2jmh.testinput.SimpleClass;
+import se.chalmers.ju2jmh.testinput.SimpleClassWithInterfaces;
+import se.chalmers.ju2jmh.testinput.SimpleInterface1;
+import se.chalmers.ju2jmh.testinput.SimpleInterface2;
+import se.chalmers.ju2jmh.testinput.SimpleSubclass;
+import se.chalmers.ju2jmh.testinput.SimpleSuperclass;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -26,8 +32,8 @@ public class InputClassRepositoryTest {
         for (Class<?> clazz : classes) {
             inputClassDirectory.add(clazz);
         }
-        return new InputClassRepository(inputClassDirectory.sourcesDirectory().toString(),
-                inputClassDirectory.bytecodeDirectory().toString());
+        return new InputClassRepository(inputClassDirectory.sourcesDirectory(),
+                inputClassDirectory.bytecodeDirectory());
     }
 
     @Test
