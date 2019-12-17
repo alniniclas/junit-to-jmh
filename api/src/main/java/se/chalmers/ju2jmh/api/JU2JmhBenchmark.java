@@ -7,6 +7,7 @@ import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
 
 public abstract class JU2JmhBenchmark {
+    @FunctionalInterface
     public interface BenchmarkMethod {
         void run() throws Throwable;
     }
