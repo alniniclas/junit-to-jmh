@@ -2,7 +2,6 @@ package se.chalmers.ju2jmh;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.TypeDeclaration;
-import org.apache.bcel.classfile.JavaClass;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -15,6 +14,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -39,12 +39,6 @@ public class Converter implements Callable<Integer> {
     private List<String> classNames;
 
     @CommandLine.Option(
-            names = {"-f", "--improve-fixture"},
-            description = "Improve the generated benchmarks by calling invocation-level fixture "
-                    + "methods directly from the benchmark methods themselves.")
-    private boolean improveFixture;
-
-    @CommandLine.Option(
             names = {"--ju4-runner-benchmark"},
             description = "Generate benchmarks delegating their execution to the JUnit 4 JUnitCore "
                     + "runner.")
@@ -56,7 +50,7 @@ public class Converter implements Callable<Integer> {
                     + "input classes fails.")
     private boolean ignoreFailures;
 
-    private void writeBenchmarkToFile(CompilationUnit benchmark, File outputFile)
+    private void writeSourceCodeToFile(CompilationUnit benchmark, File outputFile)
             throws IOException {
         outputFile.getParentFile().mkdirs();
         outputFile.createNewFile();
@@ -66,27 +60,25 @@ public class Converter implements Callable<Integer> {
         }
     }
 
-    private void generateRegularBenchmarks(InputClassRepository repository)
-            throws ClassNotFoundException, IOException {
+    private void generateNestedBenchmarks() throws ClassNotFoundException, IOException {
+        NestedBenchmarkSuiteBuilder benchmarkSuiteBuilder =
+                new NestedBenchmarkSuiteBuilder(toPaths(sourcePath), toPaths(classPath));
         for (String className : classNames) {
-            InputClass inputClass = repository.findClass(className);
-            CompilationUnit ast = inputClass.getSource().findCompilationUnit().orElseThrow();
-            ExceptionTestRestructurer.restructureExceptionTests(ast);
-            JmhAnnotationAdder.addBenchmarkAnnotations(ast);
-            if (improveFixture) {
-                JmhFixtureImprover.improveFixture(ast);
-            }
-            JavaClass bytecode = inputClass.getBytecode();
+            benchmarkSuiteBuilder.addTestClass(className);
+        }
+        Map<String, CompilationUnit> suite = benchmarkSuiteBuilder.buildSuite();
+        for (String className : suite.keySet()) {
             File outputFile =
-                    outputPath.resolve(bytecode.getPackageName().replace('.', File.separatorChar))
-                            .resolve(bytecode.getSourceFileName())
+                    outputPath.resolve(className.replace('.', File.separatorChar) + ".java")
                             .toFile();
-            writeBenchmarkToFile(ast, outputFile);
+            writeSourceCodeToFile(suite.get(className), outputFile);
         }
     }
 
-    private void generateJU4Benchmarks(InputClassRepository repository)
+    private void generateJU4Benchmarks()
             throws ClassNotFoundException, IOException, InvalidInputClassException {
+        InputClassRepository repository =
+                new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
         JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
         List<CompilationUnit> benchmarks = new ArrayList<>(classNames.size());
         for (String className : classNames) {
@@ -103,7 +95,7 @@ public class Converter implements Callable<Integer> {
             String benchmarkClassName = benchmarkClass.getFullyQualifiedName().orElseThrow();
             File outputFile = outputPath.resolve(
                     benchmarkClassName.replace('.', File.separatorChar) + ".java").toFile();
-            writeBenchmarkToFile(benchmark, outputFile);
+            writeSourceCodeToFile(benchmark, outputFile);
         }
     }
 
@@ -115,15 +107,13 @@ public class Converter implements Callable<Integer> {
 
     @Override
     public Integer call() throws ClassNotFoundException, IOException, InvalidInputClassException {
-        InputClassRepository repository =
-                new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
         if (!outputPath.toFile().exists()) {
             throw new FileNotFoundException("Output directory " + outputPath + " does not exist");
         }
         if (!ju4RunnerBenchmark) {
-            generateRegularBenchmarks(repository);
+            generateNestedBenchmarks();
         } else {
-            generateJU4Benchmarks(repository);
+            generateJU4Benchmarks();
         }
         return 0;
     }
