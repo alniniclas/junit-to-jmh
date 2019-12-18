@@ -8,7 +8,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
 @State(Scope.Thread)
-public final class ClassWithNestedTests_Nested_JU4Benchmark {
+public class ClassWithNestedTests_Nested_JU4Benchmark {
     private Class<?> testClass = ClassWithNestedTests.Nested.class;
     private JUnitCore runner = new JUnitCore();
 

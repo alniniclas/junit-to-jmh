@@ -8,7 +8,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
 @State(Scope.Thread)
-public final class TestOverridingImplementation_JU4Benchmark {
+public class TestOverridingImplementation_JU4Benchmark {
     private Class<?> testClass = TestOverridingImplementation.class;
     private JUnitCore runner = new JUnitCore();
 

@@ -8,7 +8,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
 @State(Scope.Thread)
-public final class TwoTestCases_JU4Benchmark {
+public class TwoTestCases_JU4Benchmark {
     private Class<?> testClass = TwoTestCases.class;
     private JUnitCore runner = new JUnitCore();
 
