@@ -63,20 +63,28 @@ public abstract class JU2JmhBenchmark {
             Description description) {
         return rule.apply(statement, frameworkMethodFromDescription(description), implementation());
     }
+    
+    private final class BenchmarkStatement extends Statement {
+        private final BenchmarkMethod benchmark;
+
+        public BenchmarkStatement(BenchmarkMethod benchmark) {
+            this.benchmark = benchmark;
+        }
+
+        @Override
+        public void evaluate() throws Throwable {
+            before();
+            try {
+                benchmark.run();
+            } finally {
+                after();
+            }
+        }
+    }
 
     public final void runBenchmark(BenchmarkMethod benchmark, Description description)
             throws Throwable {
-        Statement statement = new Statement() {
-            @Override
-            public void evaluate() throws Throwable {
-                before();
-                try {
-                    benchmark.run();
-                } finally {
-                    after();
-                }
-            }
-        };
+        Statement statement = new BenchmarkStatement(benchmark);
         statement = applyClassRuleFields(statement, description);
         statement = applyClassRuleMethods(statement, description);
         statement = applyRuleFields(statement, description);
