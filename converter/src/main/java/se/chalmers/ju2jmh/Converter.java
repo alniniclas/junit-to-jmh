@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @CommandLine.Command(name = "ju2jmh", mixinStandardHelpOptions = true)
 public class Converter implements Callable<Integer> {
@@ -34,7 +36,7 @@ public class Converter implements Callable<Integer> {
     private Path outputPath;
 
     @CommandLine.Parameters(
-            description = "fully qualified names of the classes to convert to benchmarks.",
+            description = "Fully qualified names of the classes to convert to benchmarks.",
             index = "3..*")
     private List<String> classNames;
 
@@ -49,6 +51,11 @@ public class Converter implements Callable<Integer> {
             description = "Generate the remaining benchmark classes even if conversion of some "
                     + "input classes fails.")
     private boolean ignoreFailures;
+
+    @CommandLine.Option(
+            names = {"--class-names-file"},
+            description = "File to load class names from.")
+    private Path classNamesFile;
 
     private void writeSourceCodeToFile(CompilationUnit benchmark, File outputFile)
             throws IOException {
@@ -109,6 +116,15 @@ public class Converter implements Callable<Integer> {
     public Integer call() throws ClassNotFoundException, IOException, InvalidInputClassException {
         if (!outputPath.toFile().exists()) {
             throw new FileNotFoundException("Output directory " + outputPath + " does not exist");
+        }
+        if (classNamesFile != null) {
+            try (Stream<String> lines = Files.lines(classNamesFile)) {
+                if (classNames == null) {
+                    classNames = lines.collect(Collectors.toUnmodifiableList());
+                } else {
+                    classNames = Stream.concat(classNames.stream(), lines).collect(Collectors.toUnmodifiableList());
+                }
+            }
         }
         if (!ju4RunnerBenchmark) {
             generateNestedBenchmarks();
