@@ -8,7 +8,7 @@ import org.junit.runners.model.Statement;
 
 public abstract class JU2JmhBenchmark {
     @FunctionalInterface
-    public interface BenchmarkMethod {
+    public interface ThrowingRunnable {
         void run() throws Throwable;
     }
 
@@ -63,36 +63,44 @@ public abstract class JU2JmhBenchmark {
             Description description) {
         return rule.apply(statement, frameworkMethodFromDescription(description), implementation());
     }
-    
-    private final class BenchmarkStatement extends Statement {
-        private final BenchmarkMethod benchmark;
 
-        public BenchmarkStatement(BenchmarkMethod benchmark) {
-            this.benchmark = benchmark;
+    private static class BeforeAfterStatement extends Statement {
+        private final ThrowingRunnable beforeAction;
+        private final ThrowingRunnable action;
+        private final ThrowingRunnable afterAction;
+
+        private BeforeAfterStatement(
+                ThrowingRunnable beforeAction, ThrowingRunnable action,
+                ThrowingRunnable afterAction) {
+            this.beforeAction = beforeAction;
+            this.action = action;
+            this.afterAction = afterAction;
         }
 
         @Override
         public void evaluate() throws Throwable {
-            before();
+            beforeAction.run();
             try {
-                benchmark.run();
+                action.run();
             } finally {
-                after();
+                afterAction.run();
             }
         }
     }
 
-    public final void runBenchmark(BenchmarkMethod benchmark, Description description)
+    public final void runBenchmark(ThrowingRunnable benchmark, Description description)
             throws Throwable {
-        Statement statement = new BenchmarkStatement(benchmark);
-        statement = applyClassRuleFields(statement, description);
-        statement = applyClassRuleMethods(statement, description);
-        statement = applyRuleFields(statement, description);
+        Statement statement = new BeforeAfterStatement(this::before, benchmark, this::after);
         statement = applyRuleMethods(statement, description);
+        statement = applyRuleFields(statement, description);
+        statement = new BeforeAfterStatement(
+                this::beforeClass, statement::evaluate, this::afterClass);
+        statement = applyClassRuleMethods(statement, description);
+        statement = applyClassRuleFields(statement, description);
         statement.evaluate();
     }
 
-    public final void runExceptionBenchmark(BenchmarkMethod benchmark, Description description,
+    public final void runExceptionBenchmark(ThrowingRunnable benchmark, Description description,
                                             Class<? extends Throwable> expected) throws Throwable {
         try {
             runBenchmark(benchmark, description);
