@@ -29,15 +29,19 @@ public class JU2JmhBenchmarkTest {
                 @Override
                 public void evaluate() throws Throwable {
                     eventLog.add("start " + name);
-                    statement.evaluate();
-                    eventLog.add("end " + name);
+                    try {
+                        statement.evaluate();
+                        eventLog.add("end " + name);
+                    } finally {
+                        eventLog.add("finally " + name);
+                    }
                 }
             };
         }
     }
 
     public static class LoggingUnitTest {
-        private static List<String> eventLog = new ArrayList<>();
+        protected static List<String> eventLog = new ArrayList<>();
 
         @org.junit.ClassRule
         public static LogRule classRuleField = new LogRule("classRuleField", eventLog);
@@ -164,6 +168,49 @@ public class JU2JmhBenchmarkTest {
         LoggingUnitTest test = new LoggingUnitTest();
         BenchmarkImplementation instance = new BenchmarkImplementation(test);
         instance.runBenchmark(test::testMethod, null);
+
+        assertIterableEquals(expected, LoggingUnitTest.getEventLog());
+    }
+
+    public static class LoggingExceptionUnitTest extends LoggingUnitTest {
+        @org.junit.Test(expected = Exception.class)
+        public void exceptionTestMethod() throws Exception {
+            eventLog.add("exceptionTestMethod");
+            try {
+                throw new Exception();
+            } finally {
+                eventLog.add("finally exceptionTestMethod");
+            }
+        }
+    }
+
+    private static class ExceptionBenchmarkImplementation extends BenchmarkImplementation {
+        private final LoggingExceptionUnitTest implementation;
+
+        private ExceptionBenchmarkImplementation(LoggingExceptionUnitTest implementation) {
+            super(implementation);
+            this.implementation = implementation;
+        }
+
+        @Override
+        public LoggingExceptionUnitTest implementation() {
+            return implementation;
+        }
+    }
+
+    @Test
+    public void exceptionExecutionOrderIsCorrect() throws Throwable {
+        // Run with JUnit to get the correct evaluation order
+        JUnitCore jUnitCore = new JUnitCore();
+        jUnitCore.run(Request.method(LoggingExceptionUnitTest.class, "exceptionTestMethod"))
+                .getFailures()
+                .forEach(System.out::println);
+        List<String> expected = LoggingUnitTest.getEventLog();
+        LoggingUnitTest.clearEventLog();
+
+        LoggingExceptionUnitTest test = new LoggingExceptionUnitTest();
+        ExceptionBenchmarkImplementation instance = new ExceptionBenchmarkImplementation(test);
+        instance.runExceptionBenchmark(test::exceptionTestMethod, null, Exception.class);
 
         assertIterableEquals(expected, LoggingUnitTest.getEventLog());
     }

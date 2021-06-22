@@ -102,15 +102,18 @@ public abstract class JU2JmhBenchmark {
 
     public final void runExceptionBenchmark(ThrowingRunnable benchmark, Description description,
                                             Class<? extends Throwable> expected) throws Throwable {
-        try {
-            runBenchmark(benchmark, description);
-        } catch (Throwable e) {
-            if (expected.isInstance(e)) {
-                return;
+        ThrowingRunnable exceptionBenchmark = () -> {
+            try {
+                benchmark.run();
+            } catch (Throwable e) {
+                if (expected.isInstance(e)) {
+                    return;
+                }
+                throw e;
             }
-            throw e;
-        }
-        throw new AssertionError(
-                "Expected " + expected.getCanonicalName() + " but none was thrown");
+            throw new AssertionError(
+                    "Expected " + expected.getCanonicalName() + " but none was thrown");
+        };
+        runBenchmark(exceptionBenchmark, description);
     }
 }
