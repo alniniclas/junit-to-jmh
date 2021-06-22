@@ -87,13 +87,15 @@ public class NestedBenchmarkSuiteBuilder {
                         .or(Bytecode.Predicates.isMethodAnnotated(After.class))
                         .or(Bytecode.Predicates.isMethodAnnotated(BeforeClass.class))
                         .or(Bytecode.Predicates.isMethodAnnotated(AfterClass.class))
-                        .or(Bytecode.Predicates.isMethodAnnotated(Rule.class)));
+                        .or(Bytecode.Predicates.isMethodAnnotated(Rule.class))
+                        .or(Bytecode.Predicates.isMethodAnnotated(ClassRule.class)));
         if (hasTestMethods) {
             return true;
         }
         return Arrays.stream(bytecode.getFields())
                 .filter(AccessFlags::isPublic)
-                .anyMatch(Bytecode.Predicates.isFieldAnnotated(Rule.class));
+                .anyMatch(Bytecode.Predicates.isFieldAnnotated(Rule.class)
+                        .or(Bytecode.Predicates.isFieldAnnotated(ClassRule.class)));
     }
 
     private void addAbstractTestClass(String className) throws ClassNotFoundException {
