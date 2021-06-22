@@ -414,7 +414,7 @@ public class NestedBenchmarkSuiteBuilder {
                 String className = packageName + "."
                         + file.getName().substring(0, file.getName().length() - ".java".length());
                 if (compilationUnits.containsKey(className)) {
-                    return;
+                    continue;
                 }
                 InputClass inputClass = inputClassRepository.findClass(className);
                 CompilationUnit compilationUnit = inputClass.getSource()
