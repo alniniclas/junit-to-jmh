@@ -1,7 +1,10 @@
 package se.chalmers.ju2jmh.api;
 
+import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.junit.runner.Description;
@@ -119,12 +122,12 @@ public class JU2JmhBenchmarkTest {
 
         @Override
         public Statement applyRuleFields(Statement statement, Description description) {
-            return implementation.ruleField.apply(statement, description);
+            return implementation().ruleField.apply(statement, description);
         }
 
         @Override
         public Statement applyRuleMethods(Statement statement, Description description) {
-            return implementation.ruleMethod().apply(statement, description);
+            return implementation().ruleMethod().apply(statement, description);
         }
 
         @Override
@@ -139,12 +142,12 @@ public class JU2JmhBenchmarkTest {
 
         @Override
         public void before() {
-            implementation.beforeMethod();
+            implementation().beforeMethod();
         }
 
         @Override
         public void after() {
-            implementation.afterMethod();
+            implementation().afterMethod();
         }
 
         @Override
@@ -206,13 +209,80 @@ public class JU2JmhBenchmarkTest {
         JUnitCore jUnitCore = new JUnitCore();
         jUnitCore.run(Request.method(LoggingExceptionUnitTest.class, "exceptionTestMethod"))
                 .getFailures()
-                .forEach(System.out::println);
+                .forEach(e -> {
+                    throw new AssertionError(e);
+                });
         List<String> expected = LoggingUnitTest.getEventLog();
         LoggingUnitTest.clearEventLog();
 
         LoggingExceptionUnitTest test = new LoggingExceptionUnitTest();
         ExceptionBenchmarkImplementation instance = new ExceptionBenchmarkImplementation(test);
         instance.runExceptionBenchmark(test::exceptionTestMethod, null, Exception.class);
+
+        assertIterableEquals(expected, LoggingUnitTest.getEventLog());
+    }
+
+    public static class LoggingExpectedExceptionRuleUnitTest extends LoggingUnitTest {
+        public ExpectedException expectedException = ExpectedException.none();
+
+        @Rule
+        public TestRule expectedExceptionRule =
+                RuleChain.outerRule(new LogRule("expectedExceptionRule", eventLog))
+                        .around(expectedException);
+
+        @org.junit.Test
+        public void exceptionTestMethod() throws Exception {
+            eventLog.add("exceptionTestMethod");
+            expectedException.expect(Exception.class);
+            try {
+                throw new Exception();
+            } finally {
+                eventLog.add("finally exceptionTestMethod");
+            }
+        }
+    }
+
+    private static class ExpectedExceptionRuleBenchmarkImplementation
+            extends BenchmarkImplementation {
+        private final LoggingExpectedExceptionRuleUnitTest implementation;
+
+        private ExpectedExceptionRuleBenchmarkImplementation(
+                LoggingExpectedExceptionRuleUnitTest implementation) {
+            super(implementation);
+            this.implementation = implementation;
+        }
+
+        @Override
+        public LoggingExpectedExceptionRuleUnitTest implementation() {
+            return implementation;
+        }
+
+
+        @Override
+        public Statement applyRuleFields(Statement statement, Description description) {
+            statement = implementation().expectedExceptionRule.apply(statement, description);
+            statement = super.applyRuleFields(statement, description);
+            return statement;
+        }
+    }
+
+    @Test
+    public void expectedExceptionRuleExecutionOrderIsCorrect() throws Throwable {
+        // Run with JUnit to get the correct evaluation order
+        JUnitCore jUnitCore = new JUnitCore();
+        jUnitCore.run(Request.method(
+                LoggingExpectedExceptionRuleUnitTest.class, "exceptionTestMethod"))
+                .getFailures()
+                .forEach(e -> {
+                    throw new AssertionError(e);
+                });
+        List<String> expected = LoggingUnitTest.getEventLog();
+        LoggingUnitTest.clearEventLog();
+
+        LoggingExpectedExceptionRuleUnitTest test = new LoggingExpectedExceptionRuleUnitTest();
+        ExpectedExceptionRuleBenchmarkImplementation instance =
+                new ExpectedExceptionRuleBenchmarkImplementation(test);
+        instance.runBenchmark(test::exceptionTestMethod, null);
 
         assertIterableEquals(expected, LoggingUnitTest.getEventLog());
     }
