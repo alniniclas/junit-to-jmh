@@ -3,6 +3,7 @@ package se.chalmers.ju2jmh.api;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
@@ -11,6 +12,7 @@ import org.junit.runners.model.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
 public class JU2JmhBenchmarkTest {
@@ -213,5 +215,49 @@ public class JU2JmhBenchmarkTest {
         instance.runExceptionBenchmark(test::exceptionTestMethod, null, Exception.class);
 
         assertIterableEquals(expected, LoggingUnitTest.getEventLog());
+    }
+
+    private static class EmptyJU2JmhBenchmark extends JU2JmhBenchmark {
+        private Object implementation;
+
+        @Override
+        public void createImplementation() {
+            this.implementation = new Object();
+        }
+
+        @Override
+        public Object implementation() {
+            return this.implementation;
+        }
+    }
+
+    private static class EmptyStatement extends Statement {
+        @Override
+        public void evaluate() {}
+    }
+
+    @Test
+    public void timeoutRulesAreIgnored() throws Throwable {
+        JU2JmhBenchmark benchmark = new EmptyJU2JmhBenchmark();
+        Statement statement = new EmptyStatement();
+        benchmark.createImplementation();
+        Timeout timeoutRule = Timeout.seconds(1);
+
+        Statement result = benchmark.applyRule(timeoutRule, statement, Description.EMPTY);
+
+        assertEquals(statement, result);
+    }
+
+    @Test
+    public void nonTimeoutRulesAreApplied() throws Throwable {
+        JU2JmhBenchmark benchmark = new EmptyJU2JmhBenchmark();
+        Statement statement = new EmptyStatement();
+        Statement newStatement = new EmptyStatement();
+        benchmark.createImplementation();
+        TestRule rule = (base, description) -> newStatement;
+
+        Statement result = benchmark.applyRule(rule, statement, Description.EMPTY);
+
+        assertEquals(newStatement, result);
     }
 }

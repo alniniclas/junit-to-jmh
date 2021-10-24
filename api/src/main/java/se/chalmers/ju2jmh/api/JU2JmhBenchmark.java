@@ -2,6 +2,7 @@ package se.chalmers.ju2jmh.api;
 
 import org.junit.rules.MethodRule;
 import org.junit.rules.TestRule;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
@@ -56,6 +57,9 @@ public abstract class JU2JmhBenchmark {
     }
 
     public final Statement applyRule(TestRule rule, Statement statement, Description description) {
+        if (rule.getClass() == Timeout.class) {
+            return statement;
+        }
         return rule.apply(statement, description);
     }
 
