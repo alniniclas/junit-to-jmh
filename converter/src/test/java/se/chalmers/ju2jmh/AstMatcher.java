@@ -3,87 +3,120 @@ package se.chalmers.ju2jmh;
 import com.github.difflib.algorithm.DiffException;
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
-import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.printer.PrettyPrinterConfiguration;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class AstMatcher extends BaseMatcher<CompilationUnit> {
+public class AstMatcher extends BaseMatcher<Node> {
+    private static final String NEWLINE = System.lineSeparator();
     private static final PrettyPrinterConfiguration AST_PRETTY_PRINTER_CONFIG =
             new PrettyPrinterConfiguration();
-    private final CompilationUnit expectedAst;
+    private final Node expected;
+    private final String expectedCode;
 
-    private AstMatcher(CompilationUnit expectedAst) {
-        this.expectedAst = StaticJavaParser.parse(expectedAst.toString(AST_PRETTY_PRINTER_CONFIG));
+    private AstMatcher(Node expected) {
+        this.expected = expected;
+        this.expectedCode = expected.toString(AST_PRETTY_PRINTER_CONFIG);
     }
 
     @Override
     public boolean matches(Object actual) {
-        if (!(actual instanceof CompilationUnit)) {
+        if (!(actual instanceof Node)) {
             return false;
         }
-        CompilationUnit actualAst = StaticJavaParser.parse(actual.toString());
-        return actualAst.equals(expectedAst);
+        Node actualAst = (Node) actual;
+        return actualAst.toString(AST_PRETTY_PRINTER_CONFIG).equals(expectedCode);
     }
 
     @Override
     public void describeTo(Description description) {
-        description.appendValue(expectedAst);
+        description.appendValue(expected);
     }
 
     @Override
     public void describeMismatch(Object item, Description description) {
         super.describeMismatch(item, description);
-        if (!(item instanceof CompilationUnit)) {
+        if (!(item instanceof Node)) {
             return;
         }
-        CompilationUnit actualAst = (CompilationUnit) item;
-        List<String> expectedLines = expectedAst.toString(AST_PRETTY_PRINTER_CONFIG).lines()
-                .collect(Collectors.toUnmodifiableList());
+        Node actualAst = (Node) item;
+        List<String> expectedLines = expectedCode.lines().collect(Collectors.toUnmodifiableList());
         List<String> actualLines = actualAst.toString(AST_PRETTY_PRINTER_CONFIG).lines()
                 .collect(Collectors.toUnmodifiableList());
-        DiffRowGenerator diffRowGenerator = DiffRowGenerator.create()
-                .build();
+        DiffRowGenerator diffRowGenerator = DiffRowGenerator.create().build();
         try {
             List<DiffRow> diffRows = diffRowGenerator.generateDiffRows(expectedLines, actualLines);
-            String newline = System.lineSeparator();
-            description.appendText(newline).appendText("diff: <");
-            for (DiffRow diffRow : diffRows) {
+            description.appendText(NEWLINE).appendText("diff: <");
+            for (int i = 0; i < diffRows.size(); i++) {
+                DiffRow diffRow = diffRows.get(i);
                 switch (diffRow.getTag()) {
                     case EQUAL:
+                        description.appendText(NEWLINE)
+                                .appendText("  ")
+                                .appendText(diffRow.getOldLine());
                         break;
                     case DELETE:
-                        description.appendText(newline)
+                        description.appendText(NEWLINE)
                                 .appendText("- ")
                                 .appendText(diffRow.getOldLine());
                         break;
                     case INSERT:
-                        description.appendText(newline)
+                        description.appendText(NEWLINE)
                                 .appendText("+ ")
                                 .appendText(diffRow.getNewLine());
                         break;
                     case CHANGE:
-                        description.appendText(newline)
-                                .appendText("- ")
-                                .appendText(diffRow.getOldLine())
-                                .appendText(newline)
-                                .appendText("+ ")
-                                .appendText(diffRow.getNewLine());
+                        List<DiffRow> changed = new ArrayList<>();
+                        changed.add(diffRow);
+                        for (int j = i + 1; j < diffRows.size(); j++) {
+                            DiffRow futureRow = diffRows.get(j);
+                            if (futureRow.getTag() == DiffRow.Tag.CHANGE) {
+                                changed.add(futureRow);
+                            } else {
+                                break;
+                            }
+                        }
+                        i += changed.size() - 1;
+                        int oldCount = changed.size();
+                        int newCount = changed.size();
+                        for (int j = changed.size() - 1; j >= 0; j--) {
+                            if (!changed.get(j).getOldLine().isEmpty()) {
+                                break;
+                            }
+                            oldCount--;
+                        }
+                        for (int j = changed.size() - 1; j >= 0; j--) {
+                            if (!changed.get(j).getNewLine().isEmpty()) {
+                                break;
+                            }
+                            newCount--;
+                        }
+                        for (int j = 0; j < oldCount; j++) {
+                            description.appendText(NEWLINE)
+                                    .appendText("- ")
+                                    .appendText(changed.get(j).getOldLine());
+                        }
+                        for (int j = 0; j < newCount; j++) {
+                            description.appendText(NEWLINE)
+                                    .appendText("+ ")
+                                    .appendText(changed.get(j).getNewLine());
+                        }
                         break;
                 }
             }
-            description.appendText(newline).appendText(">");
+            description.appendText(NEWLINE).appendText(">");
         } catch (DiffException e) {
             description.appendText(", diff unavailable");
         }
     }
 
-    public static Matcher<CompilationUnit> equalsAst(CompilationUnit ast) {
+    public static Matcher<Node> equalsAst(Node ast) {
         return new AstMatcher(ast);
     }
 }

@@ -1,8 +1,10 @@
 package se.chalmers.ju2jmh;
 
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import picocli.CommandLine;
+import se.chalmers.ju2jmh.model.UnitTestClass;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -14,9 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,6 +49,12 @@ public class Converter implements Callable<Integer> {
             description = "Generate benchmarks delegating their execution to the JUnit 4 JUnitCore "
                     + "runner.")
     private boolean ju4RunnerBenchmark;
+
+    @CommandLine.Option(
+            names = {"--composite-benchmark"},
+            description = "Generate composite benchmarks customised to and optimised based on the "
+                    + "specific JUnit features used by the individual tests.")
+    private boolean compositeBenchmark;
 
     @CommandLine.Option(
             names = {"-i", "--ignore-failures"},
@@ -106,9 +116,75 @@ public class Converter implements Callable<Integer> {
         }
     }
 
+    private void loadMissingCompilationUnits(
+            String packageName, File file, InputClassRepository repository,
+            Map<String, CompilationUnit> compilationUnits) throws ClassNotFoundException {
+        String name = file.getName();
+        if (file.isFile()) {
+            if (name.endsWith(".java")) {
+                String className =
+                        packageName + name.substring(0, name.length() - ".java".length());
+                if (!compilationUnits.containsKey(className)) {
+                    compilationUnits.put(
+                            className,
+                            repository.findClass(className)
+                                    .getSource()
+                                    .findCompilationUnit()
+                                    .orElseThrow());
+                }
+            }
+        } else if (file.isDirectory()) {
+            packageName = packageName + name + ".";
+            File[] containedFiles = file.listFiles();
+            if (containedFiles == null) {
+                return;
+            }
+            for (File containedFile : containedFiles) {
+                loadMissingCompilationUnits(
+                        packageName, containedFile, repository, compilationUnits);
+            }
+        }
+    }
+
+    private void generateCompositeBenchmarks() throws ClassNotFoundException, IOException {
+        InputClassRepository repository =
+                new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
+        UnitTestClassRepository testClassRepository = new UnitTestClassRepository(repository);
+        Map<String, CompilationUnit> compilationUnits = new HashMap<>();
+        for (String className : classNames) {
+            UnitTestClass testClass = testClassRepository.findClass(className);
+            Predicate<String> nameValidator =
+                    CompositeBenchmarkFactory.nameValidatorForCompilationUnit(
+                            repository.findClass(className)
+                                    .getSource()
+                                    .findCompilationUnit()
+                                    .orElseThrow());
+            ClassOrInterfaceDeclaration benchmarkClass =
+                    CompositeBenchmarkFactory.generateBenchmarkClass(testClass, nameValidator);
+            TypeDeclaration<?> testClassSource = repository.findClass(className).getSource();
+            testClassSource.addMember(benchmarkClass);
+            compilationUnits.put(className, testClassSource.findCompilationUnit().orElseThrow());
+        }
+        for (Path path : toPaths(sourcePath)) {
+            File[] files = path.toFile().listFiles();
+            if (files == null) {
+                continue;
+            }
+            for (File file : files) {
+                loadMissingCompilationUnits("", file, repository, compilationUnits);
+            }
+        }
+        for (String className : compilationUnits.keySet()) {
+            CompilationUnit benchmark = compilationUnits.get(className);
+            File outputFile = outputPath.resolve(
+                    className.replace('.', File.separatorChar) + ".java").toFile();
+            writeSourceCodeToFile(benchmark, outputFile);
+        }
+    }
+
     private static List<Path> toPaths(String pathString) {
         return Arrays.stream(pathString.split(File.pathSeparator))
-                .map(p -> Path.of(p))
+                .map(Path::of)
                 .collect(Collectors.toUnmodifiableList());
     }
 
@@ -127,7 +203,11 @@ public class Converter implements Callable<Integer> {
             }
         }
         if (!ju4RunnerBenchmark) {
-            generateNestedBenchmarks();
+            if (!compositeBenchmark) {
+                generateNestedBenchmarks();
+            } else {
+                generateCompositeBenchmarks();
+            }
         } else {
             generateJU4Benchmarks();
         }

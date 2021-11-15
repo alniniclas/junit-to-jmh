@@ -9,57 +9,65 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ExceptionTestTest {
     @Test
-    public void ioExceptionSuccess() {
-        ExceptionTest test = () -> { throw new IOException(); };
-        ExceptionTest.assertThrows(IOException.class, test);
+    public void ioExceptionSuccess() throws Throwable {
+        ExceptionTest<Object> test =
+                new ExceptionTest<>(o -> { throw new IOException(); }, IOException.class);
+
+        test.accept(new Object());
     }
 
     @Test
     public void ioExceptionNoException() {
-        ExceptionTest test = () -> {};
+        ExceptionTest<Object> test = new ExceptionTest<>(o -> {}, IOException.class);
 
-        assertThrows(AssertionError.class,
-                () -> ExceptionTest.assertThrows(IOException.class, test));
+        assertThrows(AssertionError.class, () -> test.accept(new Object()));
     }
 
     @Test
     public void ioExceptionWrongException() {
-        ExceptionTest test = () -> { throw new ClassNotFoundException(); };
+        ExceptionTest<Object> test = new ExceptionTest<>(
+                o -> { throw new ClassNotFoundException(); }, IOException.class);
 
-        assertThrows(AssertionError.class,
-                () -> ExceptionTest.assertThrows(IOException.class, test));
+        assertThrows(ClassNotFoundException.class, () -> test.accept(new Object()));
     }
 
     @Test
-    public void ioExceptionSubclass() {
-        ExceptionTest test = () -> { throw new FileNotFoundException(); };
+    public void ioExceptionSubclass() throws Throwable {
+        ExceptionTest<Object> test =
+                new ExceptionTest<>(o -> { throw new FileNotFoundException(); }, IOException.class);
 
-        ExceptionTest.assertThrows(IOException.class, test);
+        test.accept(new Object());
     }
 
     @Test
     public void ioExceptionSuperclass() {
-        ExceptionTest test = () -> { throw new Exception(); };
+        ExceptionTest<Object> test =
+                new ExceptionTest<>(o -> { throw new Exception(); }, IOException.class);
 
-        assertThrows(AssertionError.class,
-                () -> ExceptionTest.assertThrows(IOException.class, test));
+        assertThrows(Exception.class, () -> test.accept(new Object()));
     }
 
     @Test
-    public void exceptionSuccess() {
-        ExceptionTest test = () -> { throw new Exception(); };
-        ExceptionTest.assertThrows(Exception.class, test);
+    public void exceptionSuccess() throws Throwable {
+        ExceptionTest<Object> test =
+                new ExceptionTest<>(o -> { throw new Exception(); }, Exception.class);
+
+        test.accept(new Object());
     }
 
     @Test
-    public void runtimeExceptionSuccess() {
-        ExceptionTest test = () -> { throw new RuntimeException(); };
-        ExceptionTest.assertThrows(RuntimeException.class, test);
+    public void runtimeExceptionSuccess() throws Throwable {
+        ExceptionTest<Object> test =
+                new ExceptionTest<>(o -> { throw new RuntimeException(); }, RuntimeException.class);
+
+        test.accept(new Object());
     }
 
     @Test
-    public void throwableSuccess() {
-        ExceptionTest test = () -> { throw new Throwable(); };
-        ExceptionTest.assertThrows(Throwable.class, test);
+    public void throwableSuccess() throws Throwable {
+        ExceptionTest<Object> test =
+                new ExceptionTest<>(o -> { throw new Throwable(); }, Throwable.class);
+
+        test.accept(new Object());
     }
 }
