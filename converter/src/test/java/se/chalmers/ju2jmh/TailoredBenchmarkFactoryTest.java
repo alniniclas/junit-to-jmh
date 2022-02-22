@@ -64,11 +64,12 @@ public class TailoredBenchmarkFactoryTest {
         ClassOrInterfaceDeclaration expected = classFromLines(
                 "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Thread)",
                 "public static class _Benchmark {",
+                "  private _Payloads payloads;",
                 "  private SimpleTest instance;",
                 "",
                 "  @org.openjdk.jmh.annotations.Benchmark",
-                "  public void benchmark_test(_Payloads payloads) throws java.lang.Throwable {",
-                "    this.runBenchmark(payloads.test);",
+                "  public void benchmark_test() throws java.lang.Throwable {",
+                "    this.runBenchmark(this.payloads.test);",
                 "  }",
                 "",
                 "  private void runBenchmark(",
@@ -78,14 +79,14 @@ public class TailoredBenchmarkFactoryTest {
                 "    payload.accept(this.instance);",
                 "  }",
                 "",
-                "  @org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Benchmark)",
-                "  public static class _Payloads {",
+                "  private static class _Payloads {",
                 "    public se.chalmers.ju2jmh.api.ThrowingConsumer<SimpleTest> test;",
                 "  }",
                 "",
                 "  @org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "  public void makePayloads(_Payloads payloads) {",
-                "    payloads.test = SimpleTest::test;",
+                "  public void makePayloads() {",
+                "    this.payloads = new _Payloads();",
+                "    this.payloads.test = SimpleTest::test;",
                 "  }",
                 "}"
         );
@@ -102,11 +103,12 @@ public class TailoredBenchmarkFactoryTest {
         ClassOrInterfaceDeclaration expected = classFromLines(
                 "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Thread)",
                 "public static class _Benchmark {",
+                "  private _Payloads payloads;",
                 "  private ClassRuleTest instance;",
                 "",
                 "  @org.openjdk.jmh.annotations.Benchmark",
-                "  public void benchmark_test(_Payloads payloads) throws java.lang.Throwable {",
-                "    payloads.test.evaluate();",
+                "  public void benchmark_test() throws java.lang.Throwable {",
+                "    this.payloads.test.evaluate();",
                 "  }",
                 "",
                 "  private static class _ClassStatement",
@@ -144,14 +146,14 @@ public class TailoredBenchmarkFactoryTest {
                 "    }",
                 "  }",
                 "",
-                "  @org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Benchmark)",
-                "  public static class _Payloads {",
+                "  private static class _Payloads {",
                 "    public org.junit.runners.model.Statement test;",
                 "  }",
                 "",
                 "  @org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "  public void makePayloads(_Payloads payloads) {",
-                "    payloads.test =",
+                "  public void makePayloads() {",
+                "    this.payloads = new _Payloads();",
+                "    this.payloads.test =",
                 "      _ClassStatement.forPayload(ClassRuleTest::test, \"test\", this);",
                 "  }",
                 "}"
@@ -170,11 +172,12 @@ public class TailoredBenchmarkFactoryTest {
         ClassOrInterfaceDeclaration expected = classFromLines(
                 "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Thread)",
                 "public static class _Benchmark {",
+                "  private _Payloads payloads;",
                 "  private InstanceRuleTest instance;",
                 "",
                 "  @org.openjdk.jmh.annotations.Benchmark",
-                "  public void benchmark_test(_Payloads payloads) throws java.lang.Throwable {",
-                "    payloads.test.evaluate();",
+                "  public void benchmark_test() throws java.lang.Throwable {",
+                "    this.payloads.test.evaluate();",
                 "  }",
                 "",
                 "  private static class _InstanceStatement",
@@ -253,14 +256,14 @@ public class TailoredBenchmarkFactoryTest {
                 "    }",
                 "  }",
                 "",
-                "  @org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Benchmark)",
-                "  public static class _Payloads {",
+                "  private static class _Payloads {",
                 "    public org.junit.runners.model.Statement test;",
                 "  }",
                 "",
                 "  @org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "  public void makePayloads(_Payloads payloads) {",
-                "    payloads.test =",
+                "  public void makePayloads() {",
+                "    this.payloads = new _Payloads();",
+                "    this.payloads.test =",
                 "      _ClassStatement.forPayload(InstanceRuleTest::test, \"test\", this);",
                 "  }",
                 "}"
@@ -278,25 +281,25 @@ public class TailoredBenchmarkFactoryTest {
     public void handlesMultipleTestsWithoutRules() {
         MethodDeclaration test1Expected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Benchmark",
-                "public void benchmark_test1(_Payloads payloads) throws java.lang.Throwable {",
-                "  this.runBenchmark(payloads.test1);",
+                "public void benchmark_test1() throws java.lang.Throwable {",
+                "  this.runBenchmark(this.payloads.test1);",
                 "}");
         MethodDeclaration test2Expected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Benchmark",
-                "public void benchmark_test2(_Payloads payloads) throws java.lang.Throwable {",
-                "  this.runBenchmark(payloads.test2);",
+                "public void benchmark_test2() throws java.lang.Throwable {",
+                "  this.runBenchmark(this.payloads.test2);",
                 "}");
         ClassOrInterfaceDeclaration payloadsExpected = classFromLines(
-                "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Benchmark)",
-                "public static class _Payloads {",
+                "private static class _Payloads {",
                 "  public se.chalmers.ju2jmh.api.ThrowingConsumer<Test> test1;",
                 "  public se.chalmers.ju2jmh.api.ThrowingConsumer<Test> test2;",
                 "}");
         MethodDeclaration makePayloadsExpected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "public void makePayloads(_Payloads payloads) {",
-                "  payloads.test1 = Test::test1;",
-                "  payloads.test2 = Test::test2;",
+                "public void makePayloads() {",
+                "  this.payloads = new _Payloads();",
+                "  this.payloads.test1 = Test::test1;",
+                "  this.payloads.test2 = Test::test2;",
                 "}");
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
                 .withTest("test1")
@@ -320,25 +323,25 @@ public class TailoredBenchmarkFactoryTest {
     public void handlesMultipleTestsWithRules() {
         MethodDeclaration test1Expected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Benchmark",
-                "public void benchmark_test1(_Payloads payloads) throws java.lang.Throwable {",
-                "  payloads.test1.evaluate();",
+                "public void benchmark_test1() throws java.lang.Throwable {",
+                "  this.payloads.test1.evaluate();",
                 "}");
         MethodDeclaration test2Expected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Benchmark",
-                "public void benchmark_test2(_Payloads payloads) throws java.lang.Throwable {",
-                "  payloads.test2.evaluate();",
+                "public void benchmark_test2() throws java.lang.Throwable {",
+                "  this.payloads.test2.evaluate();",
                 "}");
         ClassOrInterfaceDeclaration payloadsExpected = classFromLines(
-                "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Benchmark)",
-                "public static class _Payloads {",
+                "private static class _Payloads {",
                 "  public org.junit.runners.model.Statement test1;",
                 "  public org.junit.runners.model.Statement test2;",
                 "}");
         MethodDeclaration makePayloadsExpected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "public void makePayloads(_Payloads payloads) {",
-                "  payloads.test1 = _ClassStatement.forPayload(Test::test1, \"test1\", this);",
-                "  payloads.test2 = _ClassStatement.forPayload(Test::test2, \"test2\", this);",
+                "public void makePayloads() {",
+                "  this.payloads = new _Payloads();",
+                "  this.payloads.test1 = _ClassStatement.forPayload(Test::test1, \"test1\", this);",
+                "  this.payloads.test2 = _ClassStatement.forPayload(Test::test2, \"test2\", this);",
                 "}");
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
                 .withTest("test1")
@@ -363,8 +366,9 @@ public class TailoredBenchmarkFactoryTest {
     public void handlesExceptionTestsWithoutRules() {
         MethodDeclaration makePayloadsExpected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "public void makePayloads(_Payloads payloads) {",
-                "  payloads.exceptionTest = new se.chalmers.ju2jmh.api.ExceptionTest<>(",
+                "public void makePayloads() {",
+                "  this.payloads = new _Payloads();",
+                "  this.payloads.exceptionTest = new se.chalmers.ju2jmh.api.ExceptionTest<>(",
                 "    Test::exceptionTest, java.lang.Exception.class);",
                 "}");
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
@@ -382,8 +386,9 @@ public class TailoredBenchmarkFactoryTest {
     public void handlesExceptionTestsWithRules() {
         MethodDeclaration makePayloadsExpected = methodFromLines(
                 "@org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "public void makePayloads(_Payloads payloads) {",
-                "  payloads.exceptionTest = _ClassStatement.forPayload(",
+                "public void makePayloads() {",
+                "  this.payloads = new _Payloads();",
+                "  this.payloads.exceptionTest = _ClassStatement.forPayload(",
                 "    new se.chalmers.ju2jmh.api.ExceptionTest<>(",
                 "      Test::exceptionTest, java.lang.Exception.class),",
                 "    \"exceptionTest\", this);",
@@ -881,11 +886,12 @@ public class TailoredBenchmarkFactoryTest {
     public void handlesOverriddenTests() {
         BlockStmt expectedMakePayloadsBody = blockFromLines(
                 "{",
-                "  payloads.test1 = Test::test1;",
-                "  payloads.test3 = Test::test3;",
-                "  payloads.test4 = Test::test4;",
-                "  payloads.test2 = Test::test2;",
-                "  payloads.test5 = Test::test5;",
+                "  this.payloads = new _Payloads();",
+                "  this.payloads.test1 = Test::test1;",
+                "  this.payloads.test3 = Test::test3;",
+                "  this.payloads.test4 = Test::test4;",
+                "  this.payloads.test2 = Test::test2;",
+                "  this.payloads.test5 = Test::test5;",
                 "}");
         UnitTestClass testSuperclass = UnitTestClass.Builder.forClass("com.example.TestSuperclass")
                 .withTest("test1")
@@ -1018,11 +1024,12 @@ public class TailoredBenchmarkFactoryTest {
         ClassOrInterfaceDeclaration expected = classFromLines(
                 "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Thread)",
                 "public static class _Benchmark_0 {",
+                "  private _Payloads_1 payloads;",
                 "  private Test instance;",
                 "",
                 "  @org.openjdk.jmh.annotations.Benchmark",
-                "  public void benchmark_test(_Payloads_1 payloads) throws java.lang.Throwable {",
-                "    payloads.test.evaluate();",
+                "  public void benchmark_test() throws java.lang.Throwable {",
+                "    this.payloads.test.evaluate();",
                 "  }",
                 "",
                 "  private static class _InstanceStatement_2",
@@ -1100,14 +1107,14 @@ public class TailoredBenchmarkFactoryTest {
                 "    }",
                 "  }",
                 "",
-                "  @org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Benchmark)",
-                "  public static class _Payloads_1 {",
+                "  private static class _Payloads_1 {",
                 "    public org.junit.runners.model.Statement test;",
                 "  }",
                 "",
                 "  @org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
-                "  public void makePayloads(_Payloads_1 payloads) {",
-                "    payloads.test = _ClassStatement_3.forPayload(Test::test, \"test\", this);",
+                "  public void makePayloads() {",
+                "    this.payloads = new _Payloads_1();",
+                "    this.payloads.test = _ClassStatement_3.forPayload(Test::test, \"test\", this);",
                 "  }",
                 "}"
         );

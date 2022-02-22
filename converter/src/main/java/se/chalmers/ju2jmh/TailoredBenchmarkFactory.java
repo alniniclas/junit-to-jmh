@@ -227,21 +227,19 @@ public class TailoredBenchmarkFactory {
         }
     }
 
-    private static List<CodeTemplate> generateBenchmarks(
-            UnitTestClass testClass, String payloadsClassName) {
+    private static List<CodeTemplate> generateBenchmarks(UnitTestClass testClass) {
         CodeTemplate runBenchmark;
         if (hasRules(testClass)) {
-            runBenchmark = CodeTemplate.fromLines("payloads.{name}.evaluate();");
+            runBenchmark = CodeTemplate.fromLines("this.payloads.{name}.evaluate();");
         } else {
-            runBenchmark = CodeTemplate.fromLines("this.runBenchmark(payloads.{name});");
+            runBenchmark = CodeTemplate.fromLines("this.runBenchmark(this.payloads.{name});");
         }
         CodeTemplate benchmarkTemplate = CodeTemplate.fromLines(
                         "@{Benchmark}",
-                        "public void benchmark_{name}({_Payloads} payloads) throws {Throwable} {",
+                        "public void benchmark_{name}() throws {Throwable} {",
                         "  {def.runBenchmark}",
                         "}")
                 .withValue("Benchmark", Benchmark.class)
-                .withValue("_Payloads", payloadsClassName)
                 .withValue("Throwable", Throwable.class)
                 .withValue("def.runBenchmark", runBenchmark);
         return extractTests(testClass).stream()
@@ -538,12 +536,11 @@ public class TailoredBenchmarkFactory {
                     .withValue("_Test", ClassNames.shortClassName(testClass.name()));
         }
         return CodeTemplate.fromLines(
-                        "@{State}({Benchmark})",
-                        "public static class {name} {",
+                        "private static class {name} {",
                         "  {def.payloads}",
                         "}")
                 .withValue("State", State.class)
-                .withValue("Benchmark", Scope.Benchmark)
+                .withValue("Thread", Scope.Thread)
                 .withValue("name", name)
                 .withValue(
                         "def.payloads",
@@ -572,15 +569,16 @@ public class TailoredBenchmarkFactory {
         CodeTemplate makePayload;
         if (hasRules(testClass)) {
             makePayload = CodeTemplate.fromLines(
-                            "payloads.{name} =",
+                            "this.payloads.{name} =",
                             "  {_ClassStatement}.forPayload({def.getPayload}, \"{name}\", this);")
                     .withValue("_ClassStatement", classStatementName);
         } else {
-            makePayload = CodeTemplate.fromLines("payloads.{name} = {def.getPayload};");
+            makePayload = CodeTemplate.fromLines("this.payloads.{name} = {def.getPayload};");
         }
         return CodeTemplate.fromLines(
                         "@{Setup}({Trial})",
-                        "public void makePayloads({payloadsClass} payloads) {",
+                        "public void makePayloads() {",
+                        "  this.payloads = new {payloadsClass}();",
                         "  {def.makePayloads}",
                         "}")
                 .withValue("Setup", Setup.class)
@@ -612,6 +610,7 @@ public class TailoredBenchmarkFactory {
         CodeTemplate benchmarkClass = CodeTemplate.fromLines(
                 "@{State}({Thread})",
                 "public static class {_Benchmark} {",
+                "  private {_Payloads} payloads;",
                 "  private {_Test} instance;",
                 "",
                 "  {def.benchmarks}",
@@ -629,11 +628,12 @@ public class TailoredBenchmarkFactory {
         benchmarkClass = benchmarkClass.withValue("State", State.class)
                 .withValue("Thread", Scope.Thread)
                 .withValue("_Benchmark", benchmarkClassName)
+                .withValue("_Payloads", payloadsName)
                 .withValue("_Test", ClassNames.shortClassName(testClass.name()));
         benchmarkClass = benchmarkClass.withValue(
                         "def.benchmarks", String.join(
                                 "\n\n",
-                                generateBenchmarks(testClass, payloadsName)
+                                generateBenchmarks(testClass)
                                         .stream()
                                         .map(CodeTemplate::toString)
                                         .toArray(String[]::new)))
