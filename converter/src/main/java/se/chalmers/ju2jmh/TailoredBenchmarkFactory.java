@@ -36,9 +36,9 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * A factory for composite benchmarks.
+ * A factory for tailored benchmarks.
  */
-public class CompositeBenchmarkFactory {
+public class TailoredBenchmarkFactory {
     private static String getValidName(String preferred, Predicate<String> nameValidator) {
         if (nameValidator.test(preferred)) {
             return preferred;
@@ -596,7 +596,7 @@ public class CompositeBenchmarkFactory {
     }
 
     /**
-     * Generates a composite benchmark class for the given unit test class, using the given name
+     * Generates a tailored benchmark class for the given unit test class, using the given name
      * validator to prevent naming conflicts.
      *
      * @param testClass {@link UnitTestClass} representing the class to generate benchmarks for
@@ -655,7 +655,7 @@ public class CompositeBenchmarkFactory {
     }
 
     /**
-     * Generates a composite benchmark class for the given unit test class, without checking for
+     * Generates a tailored benchmark class for the given unit test class, without checking for
      * naming conflicts.
      *
      * @param testClass {@link UnitTestClass} representing the class to generate benchmarks for

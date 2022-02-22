@@ -51,10 +51,10 @@ public class Converter implements Callable<Integer> {
     private boolean ju4RunnerBenchmark;
 
     @CommandLine.Option(
-            names = {"--composite-benchmark"},
-            description = "Generate composite benchmarks customised to and optimised based on the "
-                    + "specific JUnit features used by the individual tests.")
-    private boolean compositeBenchmark;
+            names = {"--tailored-benchmark"},
+            description = "Generate benchmarks customised to and optimised based on the specific "
+                    + "JUnit features used by the individual tests.")
+    private boolean tailoredBenchmark;
 
     @CommandLine.Option(
             names = {"-i", "--ignore-failures"},
@@ -146,7 +146,7 @@ public class Converter implements Callable<Integer> {
         }
     }
 
-    private void generateCompositeBenchmarks() throws ClassNotFoundException, IOException {
+    private void generateTailoredBenchmarks() throws ClassNotFoundException, IOException {
         InputClassRepository repository =
                 new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
         UnitTestClassRepository testClassRepository = new UnitTestClassRepository(repository);
@@ -154,13 +154,13 @@ public class Converter implements Callable<Integer> {
         for (String className : classNames) {
             UnitTestClass testClass = testClassRepository.findClass(className);
             Predicate<String> nameValidator =
-                    CompositeBenchmarkFactory.nameValidatorForCompilationUnit(
+                    TailoredBenchmarkFactory.nameValidatorForCompilationUnit(
                             repository.findClass(className)
                                     .getSource()
                                     .findCompilationUnit()
                                     .orElseThrow());
             ClassOrInterfaceDeclaration benchmarkClass =
-                    CompositeBenchmarkFactory.generateBenchmarkClass(testClass, nameValidator);
+                    TailoredBenchmarkFactory.generateBenchmarkClass(testClass, nameValidator);
             TypeDeclaration<?> testClassSource = repository.findClass(className).getSource();
             testClassSource.addMember(benchmarkClass);
             compilationUnits.put(className, testClassSource.findCompilationUnit().orElseThrow());
@@ -203,10 +203,10 @@ public class Converter implements Callable<Integer> {
             }
         }
         if (!ju4RunnerBenchmark) {
-            if (!compositeBenchmark) {
+            if (!tailoredBenchmark) {
                 generateNestedBenchmarks();
             } else {
-                generateCompositeBenchmarks();
+                generateTailoredBenchmarks();
             }
         } else {
             generateJU4Benchmarks();

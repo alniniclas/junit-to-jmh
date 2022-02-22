@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static se.chalmers.ju2jmh.AstMatcher.equalsAst;
 
-public class CompositeBenchmarkFactoryTest {
+public class TailoredBenchmarkFactoryTest {
     private static CompilationUnit compilationUnitFromLines(String... lines) {
         return StaticJavaParser.parse(String.join("\n", lines));
     }
@@ -93,7 +93,7 @@ public class CompositeBenchmarkFactoryTest {
                 .withTest("test")
                 .build();
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
         assertThat(benchmark, equalsAst(expected));
     }
 
@@ -161,7 +161,7 @@ public class CompositeBenchmarkFactoryTest {
                 .withClassRuleField("rule")
                 .build();
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
         assertThat(benchmark, equalsAst(expected));
     }
 
@@ -270,7 +270,7 @@ public class CompositeBenchmarkFactoryTest {
                 .withInstanceRuleField("rule")
                 .build();
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
         assertThat(benchmark, equalsAst(expected));
     }
 
@@ -304,7 +304,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         MethodDeclaration test1 = getMethod(benchmark, "benchmark_test1");
         MethodDeclaration test2 = getMethod(benchmark, "benchmark_test2");
@@ -347,7 +347,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         MethodDeclaration test1 = getMethod(benchmark, "benchmark_test1");
         MethodDeclaration test2 = getMethod(benchmark, "benchmark_test2");
@@ -372,7 +372,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         MethodDeclaration makePayloads = getMethod(benchmark, "makePayloads");
         assertThat(makePayloads, equalsAst(makePayloadsExpected));
@@ -394,7 +394,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         MethodDeclaration makePayloads = getMethod(benchmark, "makePayloads");
         assertThat(makePayloads, equalsAst(makePayloadsExpected));
@@ -415,7 +415,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -439,7 +439,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -460,7 +460,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -485,7 +485,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -516,7 +516,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -548,7 +548,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt evaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -588,7 +588,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt instanceEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_InstanceStatement"), "evaluate");
@@ -626,7 +626,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -661,7 +661,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt evaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -704,7 +704,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt instanceEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_InstanceStatement"), "evaluate");
@@ -731,7 +731,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -758,7 +758,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt forPayloadBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "forPayload");
@@ -793,7 +793,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -839,7 +839,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -870,7 +870,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -900,7 +900,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         List<String> methodNames = benchmark.getMethods()
                 .stream()
@@ -939,7 +939,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -973,7 +973,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt runBenchmarkBody = getMethodBody(benchmark, "runBenchmark");
         assertThat(runBenchmarkBody, equalsAst(expectedRunBenchmarkBody));
@@ -1006,7 +1006,7 @@ public class CompositeBenchmarkFactoryTest {
                 .build();
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
@@ -1134,7 +1134,7 @@ public class CompositeBenchmarkFactoryTest {
         };
 
         ClassOrInterfaceDeclaration benchmark =
-                CompositeBenchmarkFactory.generateBenchmarkClass(testClass, nameValidator);
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass, nameValidator);
         assertThat(benchmark, equalsAst(expected));
     }
 
@@ -1227,7 +1227,7 @@ public class CompositeBenchmarkFactoryTest {
         );
 
         Predicate<String> nameValidator =
-                CompositeBenchmarkFactory.nameValidatorForCompilationUnit(compilationUnit);
+                TailoredBenchmarkFactory.nameValidatorForCompilationUnit(compilationUnit);
         for (int i = 0; i <= 105; i++) {
             String identifier = "_i" + i;
             assertFalse(nameValidator.test(identifier), identifier + " passed validation");
