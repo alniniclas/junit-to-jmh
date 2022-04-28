@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import se.chalmers.ju2jmh.model.UnitTestClass;
 import se.chalmers.ju2jmh.testinput.unittests.ExceptionTest;
+import se.chalmers.ju2jmh.testinput.unittests.IgnoredUnitTest;
 import se.chalmers.ju2jmh.testinput.unittests.SimpleUnitTest;
 import se.chalmers.ju2jmh.testinput.unittests.TestAbstractClass;
 import se.chalmers.ju2jmh.testinput.unittests.TestImplementation;
@@ -123,6 +124,18 @@ public class UnitTestClassRepositoryTest {
         UnitTestClass expected = UnitTestClass.Builder.forClass(testClass.getCanonicalName())
                 .withSuperclass(expectedSuper)
                 .withTest("subclassTest")
+                .build();
+
+        UnitTestClass actual = repository.findClass(testClass.getCanonicalName());
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void skipsIgnoredUnitTest() throws IOException, ClassNotFoundException {
+        Class<?> testClass = IgnoredUnitTest.class;
+        inputClassDirectory.add(testClass);
+        UnitTestClass expected = UnitTestClass.Builder.forClass(testClass.getCanonicalName())
                 .build();
 
         UnitTestClass actual = repository.findClass(testClass.getCanonicalName());

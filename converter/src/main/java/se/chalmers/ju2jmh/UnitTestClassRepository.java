@@ -11,6 +11,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import se.chalmers.ju2jmh.model.UnitTestClass;
@@ -26,6 +27,7 @@ import java.util.function.Predicate;
  */
 public class UnitTestClassRepository {
     private static final String TEST_ANNOTATION = Bytecode.annotationTypeName(Test.class);
+    private static final String IGNORE_ANNOTATION = Bytecode.annotationTypeName(Ignore.class);
     private static final String BEFORE_ANNOTATION = Bytecode.annotationTypeName(Before.class);
     private static final String AFTER_ANNOTATION = Bytecode.annotationTypeName(After.class);
     private static final String BEFORE_CLASS_ANNOTATION =
@@ -72,6 +74,11 @@ public class UnitTestClassRepository {
             for (AnnotationEntry annotation : method.getAnnotationEntries()) {
                 String annotationType = annotation.getAnnotationType();
                 if (annotationType.equals(TEST_ANNOTATION)) {
+                    if (Arrays.stream(method.getAnnotationEntries())
+                            .map(AnnotationEntry::getAnnotationType)
+                            .anyMatch(Predicate.isEqual(IGNORE_ANNOTATION))) {
+                        continue;
+                    }
                     Optional<String> expected = Arrays.stream(annotation.getElementValuePairs())
                             .filter(evp -> evp.getNameString().equals("expected"))
                             .map(ElementValuePair::getValue)
