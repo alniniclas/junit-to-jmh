@@ -11,6 +11,7 @@ import com.google.common.collect.Lists;
 import org.junit.rules.MethodRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.FrameworkMethod;
+import org.junit.runners.model.Statement;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
@@ -419,10 +420,9 @@ public class TailoredBenchmarkFactory {
         }
     }
 
-    private static CodeTemplate generateClassStatement(
-            UnitTestClass testClass, String name, String benchmarkClassName,
-            String instanceStatementName) {
-        if (!hasRules(testClass)) {
+    private static CodeTemplate generateApplyClassRulesStatement(
+            UnitTestClass testClass, String name) {
+        if (!hasClassRules(testClass)) {
             return CodeTemplate.fromLines("");
         }
         Function<String, String> className =
@@ -442,23 +442,63 @@ public class TailoredBenchmarkFactory {
             }
         };
         CodeTemplate applyClassRule = CodeTemplate.fromLines(
-                "statement = {Rules}.apply({getClassRule}, statement, description);");
+                "statement = {Rules}.apply({getClassRule}, statement, this.description);");
+        return CodeTemplate.fromLines(
+                        "private static class {name} extends {Statement} {",
+                        "  private final {Statement} statement;",
+                        "  private final {Description} description;",
+                        "",
+                        "  public {name}({Statement} statement, {Description} description) {",
+                        "    this.statement = statement;",
+                        "    this.description = description;",
+                        "  }",
+                        "",
+                        "  @{Override}",
+                        "  public void evaluate() throws {Throwable} {",
+                        "    {Statement} statement = this.statement;",
+                        "    {def.classRulesApplication}",
+                        "    statement.evaluate();",
+                        "  }",
+                        "}")
+                .withValue("name", name)
+                .withValue("Statement", Statement.class)
+                .withValue("Description", Description.class)
+                .withValue("Override", Override.class)
+                .withValue("Throwable", Throwable.class)
+                .withValue("Rules", Rules.class)
+                .withValue(
+                        "def.classRulesApplication",
+                        extractClassRules(testClass)
+                                .stream()
+                                .map(getClassRule)
+                                .map(gcr -> applyClassRule.withValue("getClassRule", gcr))
+                                .map(CodeTemplate::toString)
+                                .collect(Collectors.joining("\n")));
+    }
+
+    private static CodeTemplate generateClassStatement(
+            UnitTestClass testClass, String name, String benchmarkClassName,
+            String instanceStatementName, String applyClassRulesStatementName) {
+        if (!hasRules(testClass)) {
+            return CodeTemplate.fromLines("");
+        }
         boolean hasInstanceRules = hasInstanceRules(testClass);
+        boolean hasClassRules = hasClassRules(testClass);
         return CodeTemplate.fromLines(
                         "private static class {name} extends {Statement} {",
                         "  private final {ThrowingConsumer}<{_Test}> payload;",
                         "  private final {_Benchmark} benchmark;",
-                        "  private final {Description} description;",
+                        hasInstanceRules ? "  private final {Description} description;" : "",
                         hasInstanceRules ? "  private final {FrameworkMethod} frameworkMethod;" : "",
                         "",
                         "  private {name}(",
                         "      {ThrowingConsumer}<{_Test}> payload,",
-                        "      {_Benchmark} benchmark,",
-                        "      {Description} description" + (hasInstanceRules ? "," : ") {"),
+                        "      {_Benchmark} benchmark" + (hasInstanceRules ? "," : ") {"),
+                        hasInstanceRules ? "      {Description} description," : "",
                         hasInstanceRules ? "      {FrameworkMethod} frameworkMethod) {" : "",
                         "    this.payload = payload;",
                         "    this.benchmark = benchmark;",
-                        "    this.description = description;",
+                        hasInstanceRules ? "    this.description = description;" : "",
                         hasInstanceRules ? "    this.frameworkMethod = frameworkMethod;" : "",
                         "  }",
                         "",
@@ -480,6 +520,8 @@ public class TailoredBenchmarkFactory {
                         hasInstanceRules ? "      this.benchmark.instance);" : "",
                         hasInstanceRules ? "  }" : "",
                         "",
+                        "  {def.applyClassRulesStatement}",
+                        "",
                         "  public static {Statement} forPayload(",
                         "      {ThrowingConsumer}<{_Test}> payload,",
                         "      String name,",
@@ -489,10 +531,11 @@ public class TailoredBenchmarkFactory {
                         hasInstanceRules ? "      {Rules}.frameworkMethod({_Test}.class, name);" : "",
                         "    {Statement} statement = new {name}(",
                         "      payload,",
-                        "      benchmark,",
-                        "      description" + (hasInstanceRules ? "," : ");"),
+                        "      benchmark" + (hasInstanceRules ? "," : ");"),
+                        hasInstanceRules ? "      description," : "",
                         hasInstanceRules ? "      frameworkMethod);" : "",
-                        "    {def.classRulesApplication}",
+                        hasClassRules ? "    statement = new {applyClassRulesStatementName}(" : "",
+                        hasClassRules ? "      statement, description);" : "",
                         "    return statement;",
                         "  }",
                         "}")
@@ -514,13 +557,9 @@ public class TailoredBenchmarkFactory {
                         "def.instanceAction",
                         generateClassStatementInstanceAction(testClass, instanceStatementName))
                 .withValue(
-                        "def.classRulesApplication",
-                        extractClassRules(testClass)
-                                .stream()
-                                .map(getClassRule)
-                                .map(gcr -> applyClassRule.withValue("getClassRule", gcr))
-                                .map(CodeTemplate::toString)
-                                .collect(Collectors.joining("\n")))
+                        "def.applyClassRulesStatement",
+                        generateApplyClassRulesStatement(testClass, applyClassRulesStatementName))
+                .withValue("applyClassRulesStatementName", applyClassRulesStatementName)
                 .withValue("_Test", ClassNames.shortClassName(testClass.name()))
                 .withValue("Rules", Rules.class);
     }
@@ -606,6 +645,8 @@ public class TailoredBenchmarkFactory {
         String benchmarkClassName = getValidName("_Benchmark", nameValidator);
         String instanceStatementName = getValidName("_InstanceStatement", nameValidator);
         String classStatementName = getValidName("_ClassStatement", nameValidator);
+        String applyClassRulesStatementName =
+                getValidName("_ApplyClassRulesStatement", nameValidator);
         String payloadsName = getValidName("_Payloads", nameValidator);
         CodeTemplate benchmarkClass = CodeTemplate.fromLines(
                 "@{State}({Thread})",
@@ -646,7 +687,7 @@ public class TailoredBenchmarkFactory {
                         "def._ClassStatement",
                         generateClassStatement(
                                 testClass, classStatementName, benchmarkClassName,
-                                instanceStatementName))
+                                instanceStatementName, applyClassRulesStatementName))
                 .withValue("def._Payloads", generatePayloads(testClass, payloadsName))
                 .withValue(
                         "def.makePayloads",

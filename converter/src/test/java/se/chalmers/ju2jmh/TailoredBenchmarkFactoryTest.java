@@ -115,21 +115,40 @@ public class TailoredBenchmarkFactoryTest {
                 "      extends org.junit.runners.model.Statement {",
                 "    private final se.chalmers.ju2jmh.api.ThrowingConsumer<ClassRuleTest> payload;",
                 "    private final _Benchmark benchmark;",
-                "    private final org.junit.runner.Description description;",
                 "",
                 "    private _ClassStatement(",
                 "        se.chalmers.ju2jmh.api.ThrowingConsumer<ClassRuleTest> payload,",
-                "        _Benchmark benchmark,",
-                "        org.junit.runner.Description description) {",
+                "        _Benchmark benchmark) {",
                 "      this.payload = payload;",
                 "      this.benchmark = benchmark;",
-                "      this.description = description;",
                 "    }",
                 "",
                 "    @java.lang.Override",
                 "    public void evaluate() throws java.lang.Throwable {",
                 "      this.benchmark.instance = new ClassRuleTest();",
                 "      this.payload.accept(this.benchmark.instance);",
+                "    }",
+                "",
+                "",
+                "    private static class _ApplyClassRulesStatement",
+                "        extends org.junit.runners.model.Statement {",
+                "      private final org.junit.runners.model.Statement statement;",
+                "      private final org.junit.runner.Description description;",
+                "",
+                "      public _ApplyClassRulesStatement(",
+                "          org.junit.runners.model.Statement statement,",
+                "          org.junit.runner.Description description) {",
+                "        this.statement = statement;",
+                "        this.description = description;",
+                "      }",
+                "",
+                "      @java.lang.Override",
+                "      public void evaluate() throws java.lang.Throwable {",
+                "        org.junit.runners.model.Statement statement = this.statement;",
+                "        statement = se.chalmers.ju2jmh.api.Rules.apply(",
+                "          ClassRuleTest.rule, statement, this.description);",
+                "        statement.evaluate();",
+                "      }",
                 "    }",
                 "",
                 "    public static org.junit.runners.model.Statement forPayload(",
@@ -139,9 +158,8 @@ public class TailoredBenchmarkFactoryTest {
                 "      org.junit.runner.Description description =",
                 "        se.chalmers.ju2jmh.api.Rules.description(ClassRuleTest.class, name);",
                 "      org.junit.runners.model.Statement statement =",
-                "        new _ClassStatement(payload, benchmark, description);",
-                "      statement = se.chalmers.ju2jmh.api.Rules.apply(",
-                "        ClassRuleTest.rule, statement, description);",
+                "        new _ClassStatement(payload, benchmark);",
+                "      statement = new _ApplyClassRulesStatement(statement, description);",
                 "      return statement;",
                 "    }",
                 "  }",
@@ -271,6 +289,136 @@ public class TailoredBenchmarkFactoryTest {
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.InstanceRuleTest")
                 .withTest("test")
                 .withInstanceRuleField("rule")
+                .build();
+        ClassOrInterfaceDeclaration benchmark =
+                TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
+        assertThat(benchmark, equalsAst(expected));
+    }
+
+    @Test
+    public void handlesClassAndInstanceRules() {
+        ClassOrInterfaceDeclaration expected = classFromLines(
+                "@org.openjdk.jmh.annotations.State(org.openjdk.jmh.annotations.Scope.Thread)",
+                "public static class _Benchmark {",
+                "  private _Payloads payloads;",
+                "  private Test instance;",
+                "",
+                "  @org.openjdk.jmh.annotations.Benchmark",
+                "  public void benchmark_test() throws java.lang.Throwable {",
+                "    this.payloads.test.evaluate();",
+                "  }",
+                "",
+                "  private static class _InstanceStatement",
+                "      extends org.junit.runners.model.Statement {",
+                "    private final se.chalmers.ju2jmh.api.ThrowingConsumer<Test> payload;",
+                "    private final _Benchmark benchmark;",
+                "",
+                "    public _InstanceStatement(",
+                "        se.chalmers.ju2jmh.api.ThrowingConsumer<Test> payload,",
+                "        _Benchmark benchmark) {",
+                "      this.payload = payload;",
+                "      this.benchmark = benchmark;",
+                "    }",
+                "",
+                "    @java.lang.Override",
+                "    public void evaluate() throws java.lang.Throwable {",
+                "      this.payload.accept(this.benchmark.instance);",
+                "    }",
+                "  }",
+                "",
+                "  private static class _ClassStatement",
+                "      extends org.junit.runners.model.Statement {",
+                "    private final se.chalmers.ju2jmh.api.ThrowingConsumer<Test> payload;",
+                "    private final _Benchmark benchmark;",
+                "    private final org.junit.runner.Description description;",
+                "    private final org.junit.runners.model.FrameworkMethod frameworkMethod;",
+                "",
+                "    private _ClassStatement(",
+                "        se.chalmers.ju2jmh.api.ThrowingConsumer<Test> payload,",
+                "        _Benchmark benchmark,",
+                "        org.junit.runner.Description description,",
+                "        org.junit.runners.model.FrameworkMethod frameworkMethod) {",
+                "      this.payload = payload;",
+                "      this.benchmark = benchmark;",
+                "      this.description = description;",
+                "      this.frameworkMethod = frameworkMethod;",
+                "    }",
+                "",
+                "    @java.lang.Override",
+                "    public void evaluate() throws java.lang.Throwable {",
+                "      this.benchmark.instance = new Test();",
+                "      org.junit.runners.model.Statement statement =",
+                "        new _InstanceStatement(this.payload, this.benchmark);",
+                "      statement = this.applyRule(this.benchmark.instance.rule, statement);",
+                "      statement.evaluate();",
+                "    }",
+                "",
+                "    private org.junit.runners.model.Statement applyRule(",
+                "        org.junit.rules.TestRule rule,",
+                "        org.junit.runners.model.Statement statement) {",
+                "      return se.chalmers.ju2jmh.api.Rules.apply(",
+                "        rule, statement, this.description);",
+                "    }",
+                "",
+                "    private org.junit.runners.model.Statement applyRule(",
+                "        org.junit.rules.MethodRule rule,",
+                "        org.junit.runners.model.Statement statement) {",
+                "      return se.chalmers.ju2jmh.api.Rules.apply(",
+                "        rule, statement, this.frameworkMethod, this.benchmark.instance);",
+                "    }",
+                "",
+                "    private static class _ApplyClassRulesStatement",
+                "        extends org.junit.runners.model.Statement {",
+                "      private final org.junit.runners.model.Statement statement;",
+                "      private final org.junit.runner.Description description;",
+                "",
+                "      public _ApplyClassRulesStatement(",
+                "          org.junit.runners.model.Statement statement,",
+                "          org.junit.runner.Description description) {",
+                "        this.statement = statement;",
+                "        this.description = description;",
+                "      }",
+                "",
+                "      @java.lang.Override",
+                "      public void evaluate() throws java.lang.Throwable {",
+                "        org.junit.runners.model.Statement statement = this.statement;",
+                "        statement = se.chalmers.ju2jmh.api.Rules.apply(",
+                "          Test.classRule, statement, this.description);",
+                "        statement.evaluate();",
+                "      }",
+                "    }",
+                "",
+                "    public static org.junit.runners.model.Statement forPayload(",
+                "        se.chalmers.ju2jmh.api.ThrowingConsumer<Test> payload,",
+                "        String name,",
+                "        _Benchmark benchmark) {",
+                "      org.junit.runner.Description description =",
+                "        se.chalmers.ju2jmh.api.Rules.description(Test.class, name);",
+                "      org.junit.runners.model.FrameworkMethod frameworkMethod =",
+                "        se.chalmers.ju2jmh.api.Rules.frameworkMethod(Test.class, name);",
+                "      org.junit.runners.model.Statement statement =",
+                "        new _ClassStatement(payload, benchmark, description, frameworkMethod);",
+                "      statement = new _ApplyClassRulesStatement(statement, description);",
+                "      return statement;",
+                "    }",
+                "  }",
+                "",
+                "  private static class _Payloads {",
+                "    public org.junit.runners.model.Statement test;",
+                "  }",
+                "",
+                "  @org.openjdk.jmh.annotations.Setup(org.openjdk.jmh.annotations.Level.Trial)",
+                "  public void makePayloads() {",
+                "    this.payloads = new _Payloads();",
+                "    this.payloads.test =",
+                "      _ClassStatement.forPayload(Test::test, \"test\", this);",
+                "  }",
+                "}"
+        );
+        UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
+                .withTest("test")
+                .withInstanceRuleField("rule")
+                .withClassRuleField("classRule")
                 .build();
         ClassOrInterfaceDeclaration benchmark =
                 TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
@@ -745,17 +893,14 @@ public class TailoredBenchmarkFactoryTest {
 
     @Test
     public void handlesMultipleClassRules() {
-        BlockStmt expectedForPayloadBody = blockFromLines(
+        BlockStmt expectedApplyRulesEvaluateBody = blockFromLines(
                 "{",
-                "  org.junit.runner.Description description =",
-                "    se.chalmers.ju2jmh.api.Rules.description(Test.class, name);",
-                "  org.junit.runners.model.Statement statement =",
-                "    new _ClassStatement(payload, benchmark, description);",
+                "  org.junit.runners.model.Statement statement = this.statement;",
                 "  statement = se.chalmers.ju2jmh.api.Rules.apply(",
-                "    Test.rule1, statement, description);",
+                "    Test.rule1, statement, this.description);",
                 "  statement = se.chalmers.ju2jmh.api.Rules.apply(",
-                "    Test.rule2, statement, description);",
-                "  return statement;",
+                "    Test.rule2, statement, this.description);",
+                "  statement.evaluate();",
                 "}");
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
                 .withClassRuleField("rule1")
@@ -765,9 +910,11 @@ public class TailoredBenchmarkFactoryTest {
         ClassOrInterfaceDeclaration benchmark =
                 TailoredBenchmarkFactory.generateBenchmarkClass(testClass);
 
-        BlockStmt forPayloadBody = getMethodBody(
-                getNestedClass(benchmark, "_ClassStatement"), "forPayload");
-        assertThat(forPayloadBody, equalsAst(expectedForPayloadBody));
+        BlockStmt applyRulesEvaluateBody = getMethodBody(
+                getNestedClass(
+                        getNestedClass(benchmark, "_ClassStatement"), "_ApplyClassRulesStatement"),
+                "evaluate");
+        assertThat(applyRulesEvaluateBody, equalsAst(expectedApplyRulesEvaluateBody));
     }
 
     @Test
@@ -780,17 +927,12 @@ public class TailoredBenchmarkFactoryTest {
                 "  statement = this.applyRule(this.benchmark.instance.rule(), statement);",
                 "  statement.evaluate();",
                 "}");
-        BlockStmt expectedForPayloadBody = blockFromLines(
+        BlockStmt expectedApplyRulesEvaluateBody = blockFromLines(
                 "{",
-                "  org.junit.runner.Description description =",
-                "    se.chalmers.ju2jmh.api.Rules.description(Test.class, name);",
-                "  org.junit.runners.model.FrameworkMethod frameworkMethod =",
-                "    se.chalmers.ju2jmh.api.Rules.frameworkMethod(Test.class, name);",
-                "  org.junit.runners.model.Statement statement =",
-                "    new _ClassStatement(payload, benchmark, description, frameworkMethod);",
+                "  org.junit.runners.model.Statement statement = this.statement;",
                 "  statement = se.chalmers.ju2jmh.api.Rules.apply(",
-                "    Test.classRule(), statement, description);",
-                "  return statement;",
+                "    Test.classRule(), statement, this.description);",
+                "  statement.evaluate();",
                 "}");
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
                 .withInstanceRuleMethod("rule")
@@ -802,10 +944,12 @@ public class TailoredBenchmarkFactoryTest {
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
-        BlockStmt forPayloadBody = getMethodBody(
-                getNestedClass(benchmark, "_ClassStatement"), "forPayload");
+        BlockStmt applyRulesEvaluateBody = getMethodBody(
+                getNestedClass(
+                        getNestedClass(benchmark, "_ClassStatement"), "_ApplyClassRulesStatement"),
+                "evaluate");
         assertThat(classEvaluateBody, equalsAst(expectedClassEvaluateBody));
-        assertThat(forPayloadBody, equalsAst(expectedForPayloadBody));
+        assertThat(applyRulesEvaluateBody, equalsAst(expectedApplyRulesEvaluateBody));
     }
 
     @Test
@@ -819,19 +963,14 @@ public class TailoredBenchmarkFactoryTest {
                 "  statement = this.applyRule(this.benchmark.instance.ruleMethod(), statement);",
                 "  statement.evaluate();",
                 "}");
-        BlockStmt expectedForPayloadBody = blockFromLines(
+        BlockStmt expectedApplyRulesEvaluateBody = blockFromLines(
                 "{",
-                "  org.junit.runner.Description description =",
-                "    se.chalmers.ju2jmh.api.Rules.description(Test.class, name);",
-                "  org.junit.runners.model.FrameworkMethod frameworkMethod =",
-                "    se.chalmers.ju2jmh.api.Rules.frameworkMethod(Test.class, name);",
-                "  org.junit.runners.model.Statement statement =",
-                "    new _ClassStatement(payload, benchmark, description, frameworkMethod);",
+                "  org.junit.runners.model.Statement statement = this.statement;",
                 "  statement = se.chalmers.ju2jmh.api.Rules.apply(",
-                "    com.example.TestSuperclass.classRuleField, statement, description);",
+                "    com.example.TestSuperclass.classRuleField, statement, this.description);",
                 "  statement = se.chalmers.ju2jmh.api.Rules.apply(",
-                "    com.example.TestSuperclass.classRuleMethod(), statement, description);",
-                "  return statement;",
+                "    com.example.TestSuperclass.classRuleMethod(), statement, this.description);",
+                "  statement.evaluate();",
                 "}");
         UnitTestClass testSuperclass = UnitTestClass.Builder.forClass("com.example.TestSuperclass")
                 .withInstanceRuleField("ruleField")
@@ -848,10 +987,12 @@ public class TailoredBenchmarkFactoryTest {
 
         BlockStmt classEvaluateBody = getMethodBody(
                 getNestedClass(benchmark, "_ClassStatement"), "evaluate");
-        BlockStmt forPayloadBody = getMethodBody(
-                getNestedClass(benchmark, "_ClassStatement"), "forPayload");
+        BlockStmt applyRulesEvaluateBody = getMethodBody(
+                getNestedClass(
+                        getNestedClass(benchmark, "_ClassStatement"), "_ApplyClassRulesStatement"),
+                "evaluate");
         assertThat(classEvaluateBody, equalsAst(expectedClassEvaluateBody));
-        assertThat(forPayloadBody, equalsAst(expectedForPayloadBody));
+        assertThat(applyRulesEvaluateBody, equalsAst(expectedApplyRulesEvaluateBody));
     }
 
     @Test
@@ -1093,6 +1234,27 @@ public class TailoredBenchmarkFactoryTest {
                 "        rule, statement, this.frameworkMethod, this.benchmark.instance);",
                 "    }",
                 "",
+                "    private static class _ApplyClassRulesStatement_4",
+                "        extends org.junit.runners.model.Statement {",
+                "      private final org.junit.runners.model.Statement statement;",
+                "      private final org.junit.runner.Description description;",
+                "",
+                "      public _ApplyClassRulesStatement_4(",
+                "          org.junit.runners.model.Statement statement,",
+                "          org.junit.runner.Description description) {",
+                "        this.statement = statement;",
+                "        this.description = description;",
+                "      }",
+                "",
+                "      @java.lang.Override",
+                "      public void evaluate() throws java.lang.Throwable {",
+                "        org.junit.runners.model.Statement statement = this.statement;",
+                "        statement = se.chalmers.ju2jmh.api.Rules.apply(",
+                "          Test.classRule, statement, this.description);",
+                "        statement.evaluate();",
+                "      }",
+                "    }",
+                "",
                 "    public static org.junit.runners.model.Statement forPayload(",
                 "        se.chalmers.ju2jmh.api.ThrowingConsumer<Test> payload,",
                 "        String name,",
@@ -1103,6 +1265,7 @@ public class TailoredBenchmarkFactoryTest {
                 "        se.chalmers.ju2jmh.api.Rules.frameworkMethod(Test.class, name);",
                 "      org.junit.runners.model.Statement statement =",
                 "        new _ClassStatement_3(payload, benchmark, description, frameworkMethod);",
+                "      statement = new _ApplyClassRulesStatement_4(statement, description);",
                 "      return statement;",
                 "    }",
                 "  }",
@@ -1121,6 +1284,7 @@ public class TailoredBenchmarkFactoryTest {
         UnitTestClass testClass = UnitTestClass.Builder.forClass("com.example.Test")
                 .withTest("test")
                 .withInstanceRuleField("rule")
+                .withClassRuleField("classRule")
                 .build();
         Predicate<String> nameValidator = n -> {
           switch (n) {
@@ -1134,6 +1298,11 @@ public class TailoredBenchmarkFactoryTest {
               case "_ClassStatement_0":
               case "_ClassStatement_1":
               case "_ClassStatement_2":
+              case "_ApplyClassRulesStatement":
+              case "_ApplyClassRulesStatement_0":
+              case "_ApplyClassRulesStatement_1":
+              case "_ApplyClassRulesStatement_2":
+              case "_ApplyClassRulesStatement_3":
                   return false;
               default:
                   return true;
