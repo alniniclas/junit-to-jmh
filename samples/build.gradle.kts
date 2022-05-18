@@ -1,6 +1,6 @@
 plugins {
     java
-    id("me.champeau.gradle.jmh") version "0.5.0"
+    id("me.champeau.gradle.jmh") version "0.5.3"
 }
 
 dependencies {
@@ -18,3 +18,8 @@ jmh {
     timeOnIteration = "10 ms"
     warmup = "10 ms"
 }
+
+tasks.named<org.gradle.jvm.tasks.Jar>("jmhJar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
