@@ -48,12 +48,7 @@ of `com.example.ExampleTest`, a nested class named `_Benchmark` should have been
 benchmark methods executing each of the unit tests in `ExampleTest`.
 
 The dependencies of the generated classes should be the same as the dependencies of the original
-tests, with additional dependencies on JMH (provided automatically by the JMH Gradle Plugin) and on
-the
-[`se.chalmers.ju2jmh.api.JU2JmhBenchmark`](https://github.com/alniniclas/junit-to-jmh/blob/master/api/src/main/java/se/chalmers/ju2jmh/api/JU2JmhBenchmark.java)
-class from this project. At the moment, the easiest way to resolve the
-`se.chalmers.ju2jmh.api.JU2JmhBenchmark` dependency is to manually copy the `JU2JmhBenchmark.java`
-source file to `{path-to-project}/gradle-example/lib/src/jmh/java/se/chalmers/ju2jmh/api/`.
+tests, with an additional dependency on JMH (provided automatically by the JMH Gradle Plugin).
 
 Although generating benchmarks for Maven projects has not yet been tested, the process for doing so
 should likely be similar as long as the correct source code and class file directories are provided
@@ -165,21 +160,7 @@ $ ./gradlew converter:run --args="/tmp/ju2jmh-example/junit-to-jmh-experiment/sl
 ```
 
 If you've done everything correctly, benchmarks should now have been generated for all unit tests in
-the project, though one more step is unfortunately still required to get them working. All generated
-junit-to-jmh benchmarks have a direct or indirect dependency on the
-[`se.chalmers.ju2jmh.api.JU2JmhBenchmark`](https://github.com/alniniclas/junit-to-jmh/blob/master/api/src/main/java/se/chalmers/ju2jmh/api/JU2JmhBenchmark.java)
-class from the `junit-to-jmh` repo, which is currently not automatically made available by the
-benchmark generation tool. At the moment, the easiest way to make sure that the generated benchmarks
-have access to this dependency is just to manually copy the source file into the same source
-directory as the generated benchmarks:
-
-```
-$ mkdir /tmp/ju2jmh-example/junit-to-jmh-experiment/slowdown-detection/ju2jmh/src/jmh/java/se/chalmers/ju2jmh/api/
-$ cp /tmp/ju2jmh-example/junit-to-jmh/api/src/main/java/se/chalmers/ju2jmh/api/JU2JmhBenchmark.java /tmp/ju2jmh-example/junit-to-jmh-experiment/slowdown-detection/ju2jmh/src/jmh/java/se/chalmers/ju2jmh/api/
-```
-
-Once this is done, you should finally be able to build and run the generated JMH benchmarks. To
-build the generated benchmarks, run the following:
+the project. To build the generated benchmarks, run the following:
 
 ```
 $ cd /tmp/ju2jmh-example/junit-to-jmh-experiment/slowdown-detection/

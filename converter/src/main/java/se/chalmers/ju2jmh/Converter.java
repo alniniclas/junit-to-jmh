@@ -1,9 +1,14 @@
 package se.chalmers.ju2jmh;
 
+import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import picocli.CommandLine;
+import se.chalmers.ju2jmh.api.ExceptionTest;
+import se.chalmers.ju2jmh.api.JU2JmhBenchmark;
+import se.chalmers.ju2jmh.api.Rules;
+import se.chalmers.ju2jmh.api.ThrowingConsumer;
 import se.chalmers.ju2jmh.model.UnitTestClass;
 
 import java.io.File;
@@ -67,7 +72,12 @@ public class Converter implements Callable<Integer> {
             description = "File to load class names from.")
     private Path classNamesFile;
 
-    private void writeSourceCodeToFile(CompilationUnit benchmark, File outputFile)
+    private static CompilationUnit loadApiSource(Class<?> apiClass) throws IOException {
+        return StaticJavaParser.parseResource(
+                apiClass.getCanonicalName().replace('.', '/') + ".java");
+    }
+
+    private static void writeSourceCodeToFile(CompilationUnit benchmark, File outputFile)
             throws IOException {
         outputFile.getParentFile().mkdirs();
         outputFile.createNewFile();
@@ -90,6 +100,12 @@ public class Converter implements Callable<Integer> {
                             .toFile();
             writeSourceCodeToFile(suite.get(className), outputFile);
         }
+        writeSourceCodeToFile(
+                loadApiSource(JU2JmhBenchmark.class),
+                outputPath.resolve(
+                        JU2JmhBenchmark.class.getCanonicalName()
+                                .replace('.', File.separatorChar) + ".java")
+                        .toFile());
     }
 
     private void generateJU4Benchmarks()
@@ -116,7 +132,7 @@ public class Converter implements Callable<Integer> {
         }
     }
 
-    private void loadMissingCompilationUnits(
+    private static void loadMissingCompilationUnits(
             String packageName, File file, InputClassRepository repository,
             Map<String, CompilationUnit> compilationUnits) throws ClassNotFoundException {
         String name = file.getName();
@@ -174,6 +190,11 @@ public class Converter implements Callable<Integer> {
                 loadMissingCompilationUnits("", file, repository, compilationUnits);
             }
         }
+        compilationUnits.put(
+                ExceptionTest.class.getCanonicalName(), loadApiSource(ExceptionTest.class));
+        compilationUnits.put(Rules.class.getCanonicalName(), loadApiSource(Rules.class));
+        compilationUnits.put(
+                ThrowingConsumer.class.getCanonicalName(), loadApiSource(ThrowingConsumer.class));
         for (String className : compilationUnits.keySet()) {
             CompilationUnit benchmark = compilationUnits.get(className);
             File outputFile = outputPath.resolve(
