@@ -223,6 +223,7 @@ public class JU2JmhBenchmarkTest {
     }
 
     public static class LoggingExpectedExceptionRuleUnitTest extends LoggingUnitTest {
+        @SuppressWarnings("deprecation")
         public ExpectedException expectedException = ExpectedException.none();
 
         @Rule

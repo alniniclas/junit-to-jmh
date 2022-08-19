@@ -1,6 +1,6 @@
 plugins {
     java
-    id("me.champeau.gradle.jmh") version "0.5.3"
+    id("me.champeau.jmh") version "0.6.6"
 }
 
 dependencies {
@@ -10,16 +10,3 @@ dependencies {
     testImplementation("junit", "junit", jUnit4Version)
     jmh("junit", "junit", jUnit4Version)
 }
-
-jmh {
-    // Very short iteration time, as we're only interested in seeing whether the benchmarks are able
-    // to execute without errors rather than measuring the actual performance characteristics of the
-    // example code.
-    timeOnIteration = "10 ms"
-    warmup = "10 ms"
-}
-
-tasks.named<org.gradle.jvm.tasks.Jar>("jmhJar") {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-

@@ -4,14 +4,14 @@
  * This is a general purpose Gradle build.
  * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds
  */
-val javaparserVersion by extra { "3.15.3" }
-val jmhVersion by extra { "1.22" }
-val jUnitJupiterVersion by extra { "5.5.2" }
-val jUnit4Version by extra { "4.12" }
-val bcelVersion by extra { "6.4.1" }
+val javaparserVersion by extra { "3.24.4" }
+val jmhVersion by extra { "1.35" }
+val jUnitJupiterVersion by extra { "5.9.0" }
+val jUnit4Version by extra { "4.13.2" }
+val bcelVersion by extra { "6.5.0" }
 
 subprojects {
     repositories {
-        jcenter()
+        mavenCentral()
     }
 }

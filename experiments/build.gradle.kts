@@ -1,6 +1,6 @@
 plugins {
     java
-    id("me.champeau.gradle.jmh") version "0.5.3"
+    id("me.champeau.jmh") version "0.6.6"
 }
 
 dependencies {
@@ -18,9 +18,5 @@ dependencies {
 }
 
 jmh {
-    isIncludeTests = true
-}
-
-tasks.named<org.gradle.jvm.tasks.Jar>("jmhJar") {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    includeTests.set(true)
 }

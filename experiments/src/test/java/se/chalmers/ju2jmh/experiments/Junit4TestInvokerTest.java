@@ -9,7 +9,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 
 import static org.hamcrest.CoreMatchers.hasItems;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class Junit4TestInvokerTest {
     private static void assertNextEventsAre(Queue<String> events, String... expected) {
