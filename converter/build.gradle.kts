@@ -17,6 +17,8 @@ dependencies {
     implementation("org.apache.bcel", "bcel", bcelVersion)
     implementation("junit", "junit", jUnit4Version)
     implementation("com.google.guava", "guava", "31.1-jre")
+    implementation("org.freemarker", "freemarker", "2.3.31")
+    implementation("commons-io", "commons-io", "2.11.0")
 
     testImplementation("org.junit.jupiter", "junit-jupiter-api", jUnitJupiterVersion)
     testImplementation("org.junit.jupiter", "junit-jupiter-params", jUnitJupiterVersion)
