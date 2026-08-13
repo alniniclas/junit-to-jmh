@@ -41,7 +41,7 @@ public class JU4BenchmarkFactoryTest {
 
     public void assertProducesExpectedOutput(Class<?> clazz)
             throws IOException, ClassNotFoundException, InvalidInputClassException {
-        JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
+        WrapperBenchmarkFactory benchmarkFactory = new WrapperBenchmarkFactory(repository);
         CompilationUnit expected = astLoader.load(
                 ClassNames.shortClassName(clazz).replace('$', '_') + "_Expected.java");
         CompilationUnit generated = benchmarkFactory.createBenchmarkFromTest(clazz.getName());
@@ -87,7 +87,7 @@ public class JU4BenchmarkFactoryTest {
 
     @Test
     public void throwsExceptionWhenConvertingAbstractClass() {
-        JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
+        WrapperBenchmarkFactory benchmarkFactory = new WrapperBenchmarkFactory(repository);
 
         assertThrows(InvalidInputClassException.class,
                 () -> benchmarkFactory.createBenchmarkFromTest(TestAbstractClass.class.getName()));
@@ -95,7 +95,7 @@ public class JU4BenchmarkFactoryTest {
 
     @Test
     public void throwsExceptionWhenConvertingInterface() {
-        JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
+        WrapperBenchmarkFactory benchmarkFactory = new WrapperBenchmarkFactory(repository);
 
         assertThrows(InvalidInputClassException.class,
                 () -> benchmarkFactory.createBenchmarkFromTest(TestInterface.class.getName()));
@@ -103,7 +103,7 @@ public class JU4BenchmarkFactoryTest {
 
     @Test
     public void throwsExceptionWhenConvertingNonTestClass() {
-        JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
+        WrapperBenchmarkFactory benchmarkFactory = new WrapperBenchmarkFactory(repository);
 
         assertThrows(InvalidInputClassException.class,
                 () -> benchmarkFactory.createBenchmarkFromTest(SimpleClass.class.getName()));

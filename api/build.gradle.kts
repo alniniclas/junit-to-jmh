@@ -1,7 +1,11 @@
 plugins {
     java
 }
-
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
 dependencies {
     val jUnitJupiterVersion: String by rootProject.extra
     val jUnit4Version: String by rootProject.extra

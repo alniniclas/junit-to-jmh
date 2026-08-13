@@ -14,3 +14,5 @@ include("converter:test-input-classes")
 include("samples")
 include("api")
 include("experiments")
+
+include("regression_inputs")

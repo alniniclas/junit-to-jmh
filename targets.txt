@@ -1,0 +1,2 @@
+se.chalmers.ju2jmh.testinput.unittests.junit5.StaticLifecycleTest
+se.chalmers.ju2jmh.testinput.unittests.junit5.DisabledTest#activeTest,skippedTest

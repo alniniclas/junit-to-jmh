@@ -1,0 +1,77 @@
+@startuml
+skinparam classAttributeIconSize 0
+title Class Diagram - ju2jmh (As-Is)
+
+package "se.chalmers.ju2jmh" {
+    class Converter {
+        - sourcePath : String
+        - classPath : String
+        - outputPath : Path
+        + call() : Integer
+        - generateJU4Benchmarks()
+    }
+
+    class JU4BenchmarkFactory {
+        - repository : InputClassRepository
+        + createBenchmarkFromTest(String) : CompilationUnit
+        - generateBenchmark(...)
+    }
+
+    class InputClassRepository {
+        + findClass(String) : InputClass
+    }
+
+    class UnitTestClassRepository {
+        + findClass(String) : UnitTestClass
+    }
+
+    interface InputClass {
+        + getName() : String
+        + getBytecode() : JavaClass
+        + getSource() : TypeDeclaration
+    }
+}
+
+package "se.chalmers.ju2jmh.model" {
+    class UnitTestClass {
+        - name : String
+    }
+
+    class FixtureMethod {
+        - kind : Kind
+        - name : String
+    }
+
+    class UnitTest {
+        - name : String
+        - expectedException : String
+    }
+
+    class TestRule {
+        - name : String
+        - source : Source
+    }
+}
+
+' Relazioni estratte dal codice sorgente
+Converter --> JU4BenchmarkFactory : uses
+Converter --> InputClassRepository : creates
+
+JU4BenchmarkFactory --> InputClassRepository : uses
+UnitTestClassRepository --> InputClassRepository : uses
+
+InputClassRepository ..> InputClass : returns
+
+UnitTestClassRepository ..> UnitTestClass : creates (Model)
+
+' Composizione del Modello
+UnitTestClass "1" *-- "*" FixtureMethod : contains
+UnitTestClass "1" *-- "*" UnitTest : contains
+UnitTestClass "1" *-- "*" TestRule : contains
+
+note right of JU4BenchmarkFactory
+  Classe chiave per la modifica CR #1 e CR #2.
+  Attualmente hardcoded su JUnit 4.
+end note
+
+@enduml

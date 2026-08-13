@@ -1,0 +1,23 @@
+@startuml
+title Package Diagram - ju2jmh
+
+package "se.chalmers.ju2jmh" {
+    class Converter
+    class JU4BenchmarkFactory
+    class InputClassRepository
+}
+
+package "se.chalmers.ju2jmh.model" {
+    class UnitTestClass
+    class FixtureMethod
+    class TestRule
+}
+
+package "se.chalmers.ju2jmh.api" {
+    class JU2JmhBenchmark
+    class Rules
+}
+
+"se.chalmers.ju2jmh" ..> "se.chalmers.ju2jmh.model" : <<import>>
+"se.chalmers.ju2jmh" ..> "se.chalmers.ju2jmh.api" : <<uses>>
+@enduml

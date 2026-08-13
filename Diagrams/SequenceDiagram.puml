@@ -1,0 +1,54 @@
+@startuml
+title Sequence Diagram - Flusso di Conversione (Standard JUnit 4)
+autonumber
+
+actor User
+participant "Converter" as C
+participant "JU4BenchmarkFactory" as F
+participant "InputClassRepository" as R
+participant "File System" as FS
+
+User -> C : main(args)
+activate C
+
+C -> C : call()
+note right: Entry point PicoCLI
+
+C -> C : generateJU4Benchmarks()
+activate C
+
+    ' Creazione Repository
+    C -> R : new(sourcePath, classPath)
+
+    ' Creazione Factory
+    C -> F : new(repository)
+
+    loop per ogni "className" nella lista input
+        C -> F : createBenchmarkFromTest(className)
+        activate F
+
+        ' 1. Recupero Input
+        F -> R : findClass(className)
+        activate R
+        R --> F : InputClass (Bytecode + Source)
+        deactivate R
+
+        ' 2. Analisi Metodi
+        F -> F : findTestMethods(bytecode)
+        note right: Recupera tutti i metodi @Test.\n(Punto di intervento per CR #3)
+
+        ' 3. Generazione Codice
+        F -> F : generateBenchmark(packageName, methods...)
+        note right: Crea la CompilationUnit clonando i template.\n(Punto di intervento per CR #2 - AMBER)
+
+        F --> C : CompilationUnit (Benchmark Generato)
+        deactivate F
+
+        ' 4. Scrittura su Disco
+        C -> FS : writeSourceCodeToFile(compilationUnit)
+    end
+
+deactivate C
+deactivate C
+
+@enduml

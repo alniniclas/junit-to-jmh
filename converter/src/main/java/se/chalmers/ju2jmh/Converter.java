@@ -3,6 +3,7 @@ package se.chalmers.ju2jmh;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import picocli.CommandLine;
 import se.chalmers.ju2jmh.api.ExceptionTest;
@@ -10,20 +11,17 @@ import se.chalmers.ju2jmh.api.JU2JmhBenchmark;
 import se.chalmers.ju2jmh.api.Rules;
 import se.chalmers.ju2jmh.api.ThrowingConsumer;
 import se.chalmers.ju2jmh.model.UnitTestClass;
-
+import com.github.javaparser.ParserConfiguration.LanguageLevel; //language level
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Console;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -49,11 +47,13 @@ public class Converter implements Callable<Integer> {
             index = "3..*")
     private List<String> classNames;
 
+
+    /* JUNIT 5 AND JUNIT4 BENCHMARKS GENERATION OPTIONS */
     @CommandLine.Option(
-            names = {"--ju4-runner-benchmark"},
-            description = "Generate benchmarks delegating their execution to the JUnit 4 JUnitCore "
-                    + "runner.")
-    private boolean ju4RunnerBenchmark;
+            names = {"--ju-runner-benchmark"},
+            description = "Generate benchmarks delegating their execution to the underlying "
+                    + "JUnit runner (supports both JUnit 4 and JUnit 5).")
+    private boolean juRunnerBenchmark;
 
     @CommandLine.Option(
             names = {"--tailored-benchmark"},
@@ -72,57 +72,323 @@ public class Converter implements Callable<Integer> {
             description = "File to load class names from.")
     private Path classNamesFile;
 
+    @CommandLine.Option(
+            names = {"-m", "--methods"},
+            description = "Specific methods to convert (comma separated). If omitted, all tests are converted.",
+            split = ","
+    )
+
+    private List<String> targetMethods;
+
+
+    @CommandLine.Option(
+            names = {"--on-conflict"},
+            description = "Policy when an output file already exists: ask|overwrite|merge. Default: ask"
+    )
+    private String onConflict = "ask";
+
+    @CommandLine.Option(names = {"-q", "--quiet"}, description = "Suppress output logs like [CREATE], [OVERWRITE], etc.")
+    private boolean quiet = false;
+
     private static CompilationUnit loadApiSource(Class<?> apiClass) throws IOException {
         return StaticJavaParser.parseResource(
                 apiClass.getCanonicalName().replace('.', '/') + ".java");
     }
 
-    private static void writeSourceCodeToFile(CompilationUnit benchmark, File outputFile)
-            throws IOException {
+
+    private void writeSourceCodeToFile(CompilationUnit benchmark, File outputFile) throws IOException {
         outputFile.getParentFile().mkdirs();
-        outputFile.createNewFile();
-        try (OutputStreamWriter out = new OutputStreamWriter(
-                new FileOutputStream(outputFile), StandardCharsets.UTF_8)) {
-            out.append(benchmark.toString());
+
+        // 1 if file NOT exists create it
+        if (!outputFile.exists()) {
+            if (!quiet) System.out.println("[CREATE] " + outputFile.getPath());
+
+            //write file
+            try (OutputStreamWriter out = new OutputStreamWriter(
+                    new FileOutputStream(outputFile), StandardCharsets.UTF_8)) {
+                out.append(benchmark.toString());
+            }
+            return;
+        }
+
+        //   Jump if content is the SAME
+        try {
+            String existingContent = Files.readString(outputFile.toPath(), StandardCharsets.UTF_8);
+            //  delete string spaces
+            if (existingContent.trim().equals(benchmark.toString().trim())) {
+                return;
+            }
+        } catch (IOException e) {
+        }
+        // 3  if file EXISTS and content is DIFFERENT
+        String policy = (onConflict == null) ? "ask" : onConflict.toLowerCase();
+        boolean doOverwrite = false;
+        boolean doMerge = false;
+
+        if (policy.equals("overwrite")) doOverwrite = true;
+        else if (policy.equals("merge")) doMerge = true;
+
+        else { // ask
+            String prompt = String.format("File %s has CHANGED. Choose: [o]verwrite, [m]erge (keep previous benchmarks), [s]kip: ", outputFile.getName());
+            String line = null;
+
+            Console console = System.console();
+            if (console != null) {
+                //  terminal
+                line = console.readLine(prompt);
+            } else { //ide
+                System.out.print(prompt);
+                System.out.flush();
+                try {
+                    java.util.Scanner scanner = new java.util.Scanner(System.in);
+                    if (scanner.hasNextLine()) {
+                        line = scanner.nextLine();
+                    }
+                } catch (Exception e) {
+                }
+            }
+
+            if (line != null && line.trim().toLowerCase().startsWith("m")) doMerge = true;
+            else if (line != null && line.trim().toLowerCase().startsWith("o")) doOverwrite = true;
+            else if (line != null && line.trim().toLowerCase().startsWith("s")) return;
+            else {
+
+                doOverwrite = true;
+            }
+        }
+
+        if (doOverwrite) {
+            if (!quiet) System.out.println("[OVERWRITE] " + outputFile.getPath());
+            createBackup(outputFile);
+            try (OutputStreamWriter out = new OutputStreamWriter(
+                    new FileOutputStream(outputFile, false), StandardCharsets.UTF_8)) {
+                out.append(benchmark.toString());
+            }
+            return;
+        }
+
+        if (doMerge) {
+            try {
+                CompilationUnit existingCU = StaticJavaParser.parse(outputFile);
+                // Merge IMPORTS
+                existingCU.getImports().forEach(im -> {
+                    if (!benchmark.getImports().contains(im)) benchmark.addImport(im);
+                });
+
+                //check if the main type (class/interface) is the same, otherwise we cannot merge
+                TypeDeclaration<?> newType = benchmark.getTypes().get(0);
+                TypeDeclaration<?> existingType = existingCU.getTypes().stream()
+                        .filter(t -> t.getNameAsString().equals(newType.getNameAsString()))
+                        .findFirst().orElse(null);
+
+
+
+                // control that both types are class or interface declarations, otherwise we cannot merge
+                if (existingType != null && existingType.isClassOrInterfaceDeclaration() && newType.isClassOrInterfaceDeclaration()) {
+
+                    //convert to ClassOrInterfaceDeclaration
+                    ClassOrInterfaceDeclaration existingCid = existingType.asClassOrInterfaceDeclaration();
+                    ClassOrInterfaceDeclaration newCid = newType.asClassOrInterfaceDeclaration();
+
+                    // merge OUTER class methods
+                    mergeMethods(existingCid, newCid);
+
+                    // find inner class named _Benchmark
+                    existingCid.getMembers().stream()
+                            .filter(member -> member.isClassOrInterfaceDeclaration())
+                            .map(member -> member.asClassOrInterfaceDeclaration())
+                            .filter(inner -> inner.getNameAsString().equals("_Benchmark"))
+                            .findFirst()
+                            .ifPresent(existingInner -> {
+                                newCid.getMembers().stream()
+                                        .filter(m -> m.isClassOrInterfaceDeclaration())
+                                        .map(m -> m.asClassOrInterfaceDeclaration())
+                                        .filter(newInner -> newInner.getNameAsString().equals("_Benchmark"))
+                                        .findFirst()
+                                        .ifPresent(newInner -> {
+                                            //MERGE INNER class methods _BENCHMARK
+                                            mergeMethods(existingInner, newInner);
+                                        });
+                            });
+
+                    if (!quiet) System.out.println("[MERGE] " + outputFile.getPath());
+                    createBackup(outputFile);
+
+                    try (OutputStreamWriter out = new OutputStreamWriter(
+                            new FileOutputStream(outputFile, false), StandardCharsets.UTF_8)) {
+                        out.append(benchmark.toString());
+                    }
+                }
+            }  catch (Exception e) {
+            System.err.println("[WARN] Merge failed for " + outputFile.getName() + ": " + e.getMessage() + ". Overwriting.");
+            createBackup(outputFile);
+            try (OutputStreamWriter out = new OutputStreamWriter(
+                    new FileOutputStream(outputFile, false), StandardCharsets.UTF_8)) {
+                out.append(benchmark.toString());
+            }
+        }
         }
     }
 
-    private void generateNestedBenchmarks() throws ClassNotFoundException, IOException {
+
+    private void mergeMethods(ClassOrInterfaceDeclaration source, ClassOrInterfaceDeclaration dest) {
+        List<MethodDeclaration> oldBenchmarks = source.getMethods().stream()
+                .filter(m -> m.getNameAsString().startsWith("benchmark_"))
+                .collect(Collectors.toList());
+
+        int count = 0;
+        for (MethodDeclaration oldMethod : oldBenchmarks) {
+            boolean present = dest.getMethods().stream()
+                    .anyMatch(nm -> nm.getNameAsString().equals(oldMethod.getNameAsString()));
+            if (!present) {
+                dest.addMember(oldMethod.clone());
+                count++;
+            }
+        }
+        if (count > 0) {
+            System.out.println("   -> Recovered " + count + " methods from " + source.getNameAsString());
+        }
+    }
+
+    private void generateNestedBenchmarks() throws ClassNotFoundException, IOException, InvalidInputClassException {
+        InputClassRepository repository = new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
+
+        //builder and add all classes/methods to it
         NestedBenchmarkSuiteBuilder benchmarkSuiteBuilder =
                 new NestedBenchmarkSuiteBuilder(toPaths(sourcePath), toPaths(classPath));
-        for (String className : classNames) {
-            benchmarkSuiteBuilder.addTestClass(className);
-        }
+
+        // keep track of classes with Map
+        Map<String, List<String>> explicitlyRequestedMethods = new HashMap<>();
+
+        for (String inputArg : classNames) {
+            String className = inputArg;
+            List<String> methodsForThisClass = new ArrayList<>();
+
+            //  # method1,method2
+            if (inputArg.contains("#")) {
+                String[] parts = inputArg.split("#", 2);
+                className = parts[0];
+                if (parts.length > 1 && !parts[1].isEmpty()) {
+                    methodsForThisClass.addAll(Arrays.asList(parts[1].split(",")));
+                    explicitlyRequestedMethods.put(className, methodsForThisClass);
+                }
+            } else {
+                // -m
+                if (targetMethods != null && !targetMethods.isEmpty()) {
+                    methodsForThisClass.addAll(targetMethods);
+                }
+            }
+
+            // Print if not in quiet mode
+            if (!quiet) {
+                if (methodsForThisClass.isEmpty()) {
+                    System.out.println("Converting ENTIRE class: " + className);
+                } else {
+                    System.out.println("PARTIALLY converting " + className + " methods: " + methodsForThisClass);
+                }
+            }
+
+            // Add the class to the builder with the specified list
+            if (methodsForThisClass.isEmpty()) {
+                benchmarkSuiteBuilder.addTestClass(className);
+            } else {
+                benchmarkSuiteBuilder.addTestClass(className, methodsForThisClass);
+            }
+            }
+
         Map<String, CompilationUnit> suite = benchmarkSuiteBuilder.buildSuite();
-        for (String className : suite.keySet()) {
-            File outputFile =
-                    outputPath.resolve(className.replace('.', File.separatorChar) + ".java")
-                            .toFile();
-            writeSourceCodeToFile(suite.get(className), outputFile);
+
+
+        if (!explicitlyRequestedMethods.isEmpty()) {
+            for (Map.Entry<String, List<String>> e : explicitlyRequestedMethods.entrySet()) {
+                String className = e.getKey();
+                boolean foundBenchmarksForClass = false;
+                CompilationUnit generated = suite.get(className);
+
+                if (generated != null) {
+                    for (TypeDeclaration<?> type : generated.getTypes()) {
+                        List<MethodDeclaration> methods = type.findAll(MethodDeclaration.class);
+                        for (MethodDeclaration md : methods) {
+                            if (md.getNameAsString().startsWith("benchmark_")) {
+                                foundBenchmarksForClass = true;
+                                break;
+                            }
+                        }
+                        if (foundBenchmarksForClass) break;
+                    }
+                }
+                if (!foundBenchmarksForClass) {
+                    String msg = "Requested methods " + e.getValue() + " not found for class " + className;
+                    if (!ignoreFailures) {
+                        throw new InvalidInputClassException(msg);
+                    } else {
+                        System.err.println("Warning: " + msg);
+                    }
+                }
+            }
         }
+
+        for (String generatedClassName : suite.keySet()) {
+            File outputFile = outputPath.resolve(
+                    generatedClassName.replace('.', File.separatorChar) + ".java").toFile();
+            writeSourceCodeToFile(suite.get(generatedClassName), outputFile);
+        }
+
+        //  write JU2JmhBenchmark API class
         writeSourceCodeToFile(
                 loadApiSource(JU2JmhBenchmark.class),
                 outputPath.resolve(
-                        JU2JmhBenchmark.class.getCanonicalName()
-                                .replace('.', File.separatorChar) + ".java")
+                                JU2JmhBenchmark.class.getCanonicalName()
+                                        .replace('.', File.separatorChar) + ".java")
                         .toFile());
     }
 
-    private void generateJU4Benchmarks()
+
+
+    private void generateJUBenchmarks()
             throws ClassNotFoundException, IOException, InvalidInputClassException {
         InputClassRepository repository =
                 new InputClassRepository(toPaths(sourcePath), toPaths(classPath));
-        JU4BenchmarkFactory benchmarkFactory = new JU4BenchmarkFactory(repository);
+        WrapperBenchmarkFactory benchmarkFactory = new WrapperBenchmarkFactory(repository);
         List<CompilationUnit> benchmarks = new ArrayList<>(classNames.size());
+
         for (String className : classNames) {
+
+            if (className.contains("#")) {
+                String[] parts = className.split("#");
+                String baseClassName = parts[0];
+                String[] requestedMethods = parts[1].split(",");
+
+                // get source of the class
+                TypeDeclaration<?> testClassSource = repository.findClass(baseClassName).getSource();
+
+                // extract method names from the source
+                Set<String> actualMethodsInSource = testClassSource.findAll(MethodDeclaration.class)
+                        .stream()
+                        .map(MethodDeclaration::getNameAsString)
+                        .collect(Collectors.toSet());
+
+                // Validate that all requested methods are present in the source
+                for (String requested : requestedMethods) {
+                    String trimmedRequested = requested.trim();
+                    if (!actualMethodsInSource.contains(trimmedRequested)) {
+                        throw new InvalidInputClassException(
+                                "\n[ERRORE] Metodo '" + trimmedRequested +
+                                        "' non trovato nella classe " + baseClassName);
+                    }
+                }
+            }
+
             try {
                 benchmarks.add(benchmarkFactory.createBenchmarkFromTest(className));
             } catch (BenchmarkGenerationException e) {
                 if (!ignoreFailures) {
                     throw e;
                 }
+                System.err.println("[WARNING] Skipping " + className + " due to conversion error: " + e.getMessage());
             }
         }
+
         for (CompilationUnit benchmark : benchmarks) {
             TypeDeclaration<?> benchmarkClass = benchmark.getTypes().get(0);
             String benchmarkClassName = benchmarkClass.getFullyQualifiedName().orElseThrow();
@@ -131,6 +397,7 @@ public class Converter implements Callable<Integer> {
             writeSourceCodeToFile(benchmark, outputFile);
         }
     }
+
 
     private static void loadMissingCompilationUnits(
             String packageName, File file, InputClassRepository repository,
@@ -223,19 +490,31 @@ public class Converter implements Callable<Integer> {
                 }
             }
         }
-        if (!ju4RunnerBenchmark) {
+        if (!juRunnerBenchmark) {
             if (!tailoredBenchmark) {
                 generateNestedBenchmarks();
             } else {
                 generateTailoredBenchmarks();
             }
         } else {
-            generateJU4Benchmarks();
+            generateJUBenchmarks();
         }
         return 0;
     }
 
+
+    //  HELPER BACKUP
+    private void createBackup(File file) {
+        try {
+            Path backupPath = Path.of(file.getAbsolutePath() + ".bak");
+            Files.copy(file.toPath(), backupPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            System.err.println("[WARN] Failed to create backup for " + file.getName() + ": " + e.getMessage());
+        }
+    }
+
     public static void main(String[] args) {
+        StaticJavaParser.getConfiguration().setLanguageLevel(LanguageLevel.JAVA_17);
         int exitCode = new CommandLine(new Converter()).execute(args);
         System.exit(exitCode);
     }

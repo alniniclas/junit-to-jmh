@@ -1,22 +1,21 @@
 plugins {
     java
-    id("me.champeau.jmh") version "0.6.6"
 }
 
 dependencies {
-    // Use JUnit 4.12 instead of JUnit 5, as 4 is the version we're targeting.
-    val jUnit4Version: String by rootProject.extra
-    val javaparserVersion: String by rootProject.extra
+    implementation(project(":converter"))
+    implementation("com.github.javaparser:javaparser-core:3.25.5")
 
-    implementation("junit", "junit", jUnit4Version)
+    implementation("junit:junit:4.13.2")
+    runtimeOnly("org.junit.vintage:junit-vintage-engine:5.10.1")
 
-    testImplementation("junit", "junit", jUnit4Version)
-
-    jmh("junit", "junit", jUnit4Version)
-    jmh("com.github.javaparser", "javaparser-core", javaparserVersion)
-    jmh(project(":api"))
+    implementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
+    runtimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    implementation("org.junit.platform:junit-platform-launcher:1.10.1")
+    implementation("org.junit.platform:junit-platform-engine:1.10.1")
+    implementation("org.hamcrest:hamcrest:2.2")
 }
 
-jmh {
-    includeTests.set(true)
+tasks.named<Test>("test") {
+    useJUnitPlatform()
 }

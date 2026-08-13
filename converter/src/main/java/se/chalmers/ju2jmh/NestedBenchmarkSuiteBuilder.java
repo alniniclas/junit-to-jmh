@@ -38,6 +38,12 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+// Import JUnit 5
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
+
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.nio.file.Path;
@@ -56,6 +62,13 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class NestedBenchmarkSuiteBuilder {
+    private List<String> currentTargetMethods = null;
+    private final Map<String, List<String>> classSpecificTargetMethods = new HashMap<>();
+
+    public void setTargetMethods(List<String> targetMethods) {
+        this.currentTargetMethods = targetMethods;
+    }
+
     private static final ClassOrInterfaceDeclaration BENCHMARK_CLASS_TEMPLATE =
             AstTemplates.type("templates/nested_benchmark/benchmark_class_template.java")
                     .asClassOrInterfaceDeclaration();
@@ -75,27 +88,7 @@ public class NestedBenchmarkSuiteBuilder {
     }
 
     private boolean isTestClass(InputClass inputClass) {
-        JavaClass bytecode = inputClass.getBytecode();
-        if (bytecode.isInterface() || bytecode.isEnum() || bytecode.isAnnotation()) {
-            return false;
-        }
-        boolean hasTestMethods = Arrays.stream(bytecode.getMethods())
-                .filter(AccessFlags::isPublic)
-                .filter(Bytecode.Predicates.hasArgCount(0))
-                .anyMatch(Bytecode.Predicates.isMethodAnnotated(Test.class)
-                        .or(Bytecode.Predicates.isMethodAnnotated(Before.class))
-                        .or(Bytecode.Predicates.isMethodAnnotated(After.class))
-                        .or(Bytecode.Predicates.isMethodAnnotated(BeforeClass.class))
-                        .or(Bytecode.Predicates.isMethodAnnotated(AfterClass.class))
-                        .or(Bytecode.Predicates.isMethodAnnotated(Rule.class))
-                        .or(Bytecode.Predicates.isMethodAnnotated(ClassRule.class)));
-        if (hasTestMethods) {
-            return true;
-        }
-        return Arrays.stream(bytecode.getFields())
-                .filter(AccessFlags::isPublic)
-                .anyMatch(Bytecode.Predicates.isFieldAnnotated(Rule.class)
-                        .or(Bytecode.Predicates.isFieldAnnotated(ClassRule.class)));
+        return true;
     }
 
     private void addAbstractTestClass(String className) throws ClassNotFoundException {
@@ -108,16 +101,11 @@ public class NestedBenchmarkSuiteBuilder {
         try {
             addAbstractTestClass(superclassName);
         } catch (ClassNotFoundException e) {
-            // Superclass is unavailable. Assume it is a non-test class and continue.
         }
         if (!benchmarkClasses.containsKey(superclassName)
                 && !abstractBenchmarkClasses.containsKey(superclassName)) {
-            // Superclass is not test class, so check if this one should be added.
-            if (isTestClass(inputClass)) {
-                abstractBenchmarkClasses.put(className, inputClass);
-            }
+            abstractBenchmarkClasses.put(className, inputClass);
         } else {
-            // Superclass is test class, so add regardless.
             abstractBenchmarkClasses.put(className, inputClass);
         }
     }
@@ -125,10 +113,46 @@ public class NestedBenchmarkSuiteBuilder {
     public NestedBenchmarkSuiteBuilder addTestClass(String className)
             throws ClassNotFoundException {
         addAbstractTestClass(className);
+
         InputClass inputClass = abstractBenchmarkClasses.get(className);
+        if (inputClass == null) {
+            inputClass = inputClassRepository.findClass(className);
+        }
+
         if (inputClass != null && !inputClass.getBytecode().isAbstract()) {
             abstractBenchmarkClasses.remove(className);
             benchmarkClasses.put(className, inputClass);
+
+            if (this.currentTargetMethods != null && !this.currentTargetMethods.isEmpty()) {
+                this.classSpecificTargetMethods.put(className, this.currentTargetMethods);
+            } else {
+                this.classSpecificTargetMethods.put(className, null);
+            }
+            // --------------------------------------------------
+        }
+        return this;
+    }
+
+
+    public NestedBenchmarkSuiteBuilder addTestClass(String className, List<String> methods)
+            throws ClassNotFoundException {
+        addAbstractTestClass(className);
+
+        InputClass inputClass = abstractBenchmarkClasses.get(className);
+        if (inputClass == null) {
+            inputClass = inputClassRepository.findClass(className);
+        }
+
+        if (inputClass != null && !inputClass.getBytecode().isAbstract()) {
+            abstractBenchmarkClasses.remove(className);
+            benchmarkClasses.put(className, inputClass);
+
+            if (methods != null && !methods.isEmpty()) {
+                this.classSpecificTargetMethods.put(className, methods);
+            } else {
+                // null significa "tutti i metodi"
+                this.classSpecificTargetMethods.put(className, null);
+            }
         }
         return this;
     }
@@ -162,6 +186,16 @@ public class NestedBenchmarkSuiteBuilder {
         private static final MethodDeclaration EXCEPTION_BENCHMARK_METHOD = AstTemplates.method(
                 "templates/nested_benchmark/exception_benchmark_method_template.java");
 
+        private final List<String> allowedMethods;
+
+        public BenchmarkTemplateModifier(List<String> allowedMethods) {
+            this.allowedMethods = allowedMethods;
+        }
+
+        public BenchmarkTemplateModifier() {
+            this(null);
+        }
+
         @Override
         public Visitable visit(ClassOrInterfaceType n, InputClass arg) {
             if (n.getNameAsString().equals("IMPLEMENTATION_CLASS_NAME")) {
@@ -176,7 +210,7 @@ public class NestedBenchmarkSuiteBuilder {
         }
 
         private static Stream<MethodCallExpr> instanceMethodCalls(Predicate<Method> filter,
-                InputClass inputClass) {
+                                                                  InputClass inputClass) {
             return Arrays.stream(inputClass.getBytecode().getMethods())
                     .filter(AccessFlags::isPublic)
                     .filter(Predicate.not(AccessFlags::isStatic))
@@ -187,7 +221,7 @@ public class NestedBenchmarkSuiteBuilder {
         }
 
         private static Stream<MethodCallExpr> staticMethodCalls(Predicate<Method> filter,
-                InputClass inputClass) {
+                                                                InputClass inputClass) {
             return Arrays.stream(inputClass.getBytecode().getMethods())
                     .filter(AccessFlags::isPublic)
                     .filter(AccessFlags::isStatic)
@@ -206,20 +240,27 @@ public class NestedBenchmarkSuiteBuilder {
         }
 
         private static MethodDeclaration populateFixtureMethod(MethodDeclaration method,
-                InputClass arg, Class<? extends Annotation> annotation, MemberType methodType,
-                SuperCallOrder callSuper) {
+                                                               InputClass arg,
+                                                               Class<? extends Annotation> annotation,
+                                                               Class<? extends Annotation> modernAnnotation,
+                                                               MemberType methodType,
+                                                               SuperCallOrder callSuper) {
+
             BlockStmt body = method.getBody().orElseThrow();
             Statement superCall = callSuper == SuperCallOrder.LAST
                     ? body.getStatements().remove(0)
                     : null;
+
+            Predicate<Method> isAnnotated = m ->
+                    Bytecode.Predicates.isMethodAnnotated(annotation).test(m) ||
+                            Bytecode.Predicates.isMethodAnnotated(modernAnnotation).test(m);
+
             switch (methodType) {
                 case STATIC_METHOD:
-                    staticMethodCalls(Bytecode.Predicates.isMethodAnnotated(annotation), arg)
-                            .forEach(body::addStatement);
+                    staticMethodCalls(isAnnotated, arg).forEach(body::addStatement);
                     break;
                 case INSTANCE_METHOD:
-                    instanceMethodCalls(Bytecode.Predicates.isMethodAnnotated(annotation), arg)
-                            .forEach(body::addStatement);
+                    instanceMethodCalls(isAnnotated, arg).forEach(body::addStatement);
                     break;
                 default:
                     throw new AssertionError(
@@ -261,7 +302,7 @@ public class NestedBenchmarkSuiteBuilder {
         }
 
         public static MethodDeclaration populateApplyRulesMethod(MethodDeclaration apply,
-                InputClass arg, MemberType memberType) {
+                                                                 InputClass arg, MemberType memberType) {
             BlockStmt body = apply.getBody().orElseThrow();
             Statement superCall = body.getStatement(0);
             Statement returnStatement = body.getStatement(1);
@@ -302,17 +343,18 @@ public class NestedBenchmarkSuiteBuilder {
         public Visitable visit(MethodDeclaration n, InputClass arg) {
             switch (n.getNameAsString()) {
                 case "beforeClass":
-                    return populateFixtureMethod(n, arg, BeforeClass.class,
+                    return populateFixtureMethod(n, arg, BeforeClass.class, BeforeAll.class,
                             MemberType.STATIC_METHOD, SuperCallOrder.FIRST);
                 case "afterClass":
-                    return populateFixtureMethod(n, arg, AfterClass.class, MemberType.STATIC_METHOD,
-                            SuperCallOrder.LAST);
+                    return populateFixtureMethod(n, arg, AfterClass.class, AfterAll.class,
+                            MemberType.STATIC_METHOD, SuperCallOrder.LAST);
                 case "before":
-                    return populateFixtureMethod(n, arg, Before.class, MemberType.INSTANCE_METHOD,
-                            SuperCallOrder.FIRST);
+                    return populateFixtureMethod(n, arg, Before.class, BeforeEach.class,
+                            MemberType.INSTANCE_METHOD, SuperCallOrder.FIRST);
                 case "after":
-                    return populateFixtureMethod(n, arg, After.class, MemberType.INSTANCE_METHOD,
-                            SuperCallOrder.LAST);
+                    return populateFixtureMethod(n, arg, After.class, AfterEach.class,
+                            MemberType.INSTANCE_METHOD, SuperCallOrder.LAST);
+
                 case "applyClassRuleFields":
                     return populateApplyRulesMethod(n, arg, MemberType.STATIC_FIELD);
                 case "applyClassRuleMethods":
@@ -387,9 +429,23 @@ public class NestedBenchmarkSuiteBuilder {
                     .filter(AccessFlags::isPublic)
                     .filter(Predicate.not(AccessFlags::isStatic))
                     .filter(Bytecode.Predicates.hasArgCount(0))
-                    .filter(Bytecode.Predicates.isMethodAnnotated(Test.class))
-                    .filter(Predicate.not(
-                            Bytecode.Predicates.isMethodAnnotated(Ignore.class)))
+                    // CHECK JUNIT 4 e 5
+                    .filter(m ->
+                            Bytecode.Predicates.isMethodAnnotated(Test.class).test(m)
+                                    || Bytecode.Predicates.isMethodAnnotated(org.junit.jupiter.api.Test.class).test(m)
+                    )
+                    // IGNORE
+                    .filter(m -> !(
+                            Bytecode.Predicates.isMethodAnnotated(Ignore.class).test(m)
+                                    || Bytecode.Predicates.isMethodAnnotated(org.junit.jupiter.api.Disabled.class).test(m)
+                    ))
+                    // LIST FILTER: Se null, accetta tutto. Se lista, accetta solo se presente.
+                    .filter(m -> {
+                        if (allowedMethods == null || allowedMethods.isEmpty()) {
+                            return true;
+                        }
+                        return allowedMethods.contains(m.getName());
+                    })
                     .map(BenchmarkTemplateModifier::generateBenchmarkMethod);
         }
 
@@ -403,7 +459,7 @@ public class NestedBenchmarkSuiteBuilder {
     }
 
     private void loadOutputCompilationUnits(Map<String, CompilationUnit> compilationUnits,
-            File directory, String packageName) throws ClassNotFoundException {
+                                            File directory, String packageName) throws ClassNotFoundException {
         File[] files = directory.listFiles();
         if (files == null) {
             return;
@@ -451,7 +507,7 @@ public class NestedBenchmarkSuiteBuilder {
     }
 
     private TypeDeclaration<?> findTypeInCompilationUnit(String className,
-            CompilationUnit compilationUnit) throws ClassNotFoundException {
+                                                         CompilationUnit compilationUnit) throws ClassNotFoundException {
         String shortClassName = ClassNames.shortClassName(className);
         String outermostClassName = ClassNames.outermostClassName(shortClassName);
         TypeDeclaration<?> outermostType = compilationUnit.getTypes()
@@ -548,16 +604,32 @@ public class NestedBenchmarkSuiteBuilder {
                     findOutputTypeDeclaration(compilationUnits, testClassName);
             benchmarkClassNames.put(testClassName, benchmarkClassName(enclosing));
         }
+
+        // First pass: create benchmark class ASTs and store related info without adding them yet.
+        Map<String, ClassOrInterfaceDeclaration> generatedBenchmarks = new HashMap<>();
+        Map<String, InputClass> inputClasses = new HashMap<>();
+        Map<String, String> benchmarkSuperNames = new HashMap<>();
+
         for (String testClassName : benchmarkClassNames.keySet()) {
             TypeDeclaration<?> enclosing =
                     findOutputTypeDeclaration(compilationUnits, testClassName);
+
+            // Skip interfaces entirely: do not generate benchmark classes for interfaces
+            if (enclosing instanceof ClassOrInterfaceDeclaration
+                    && ((ClassOrInterfaceDeclaration) enclosing).isInterface()) {
+                continue;
+            }
+
             InputClass testInputClass = findInputClass(enclosing);
-            String superclassName =
-                    benchmarkClassNames.get(testInputClass.getSuperclassName());
+            inputClasses.put(testClassName, testInputClass);
+
+            String superclassName = benchmarkClassNames.get(testInputClass.getSuperclassName());
             if (superclassName != null) {
                 superclassName = ClassNames.canonicalClassName(
                         testInputClass.getSuperclassName() + "$" + superclassName);
+                benchmarkSuperNames.put(testClassName, superclassName);
             }
+
             ClassOrInterfaceDeclaration benchmarkClass = BENCHMARK_CLASS_TEMPLATE.clone();
             benchmarkClass.setName(benchmarkClassNames.get(testClassName));
             if (superclassName != null) {
@@ -567,9 +639,74 @@ public class NestedBenchmarkSuiteBuilder {
             if (abstractBenchmarkClasses.containsKey(testClassName)) {
                 benchmarkClass.setAbstract(true);
             }
-            benchmarkClass.accept(new BenchmarkTemplateModifier(), testInputClass);
-            enclosing.addMember(benchmarkClass);
+
+            // Apply modifier to fill in methods/fields based on bytecode
+            List<String> methodsForThisClass = classSpecificTargetMethods.get(testClassName);
+            benchmarkClass.accept(new BenchmarkTemplateModifier(methodsForThisClass), testInputClass);
+
+            generatedBenchmarks.put(testClassName, benchmarkClass);
+        }
+
+        // Determine which benchmark classes should actually be added.
+        // Start with classes that contain JMH @Benchmark methods or overridden fixture methods
+        // (beforeClass/afterClass/before/after). Then propagate to subclasses that extend a
+        // benchmark class that will be generated.
+        Set<String> toAdd = generatedBenchmarks.entrySet().stream()
+                .filter(e -> {
+                    ClassOrInterfaceDeclaration bc = e.getValue();
+                    // Has explicit @Benchmark method
+                    boolean hasBenchmark = bc.getMembers().stream()
+                            .filter(BodyDeclaration::isMethodDeclaration)
+                            .map(BodyDeclaration::asMethodDeclaration)
+                            .anyMatch(m -> m.getAnnotationByName("Benchmark").isPresent());
+                    if (hasBenchmark) return true;
+                    // Has overridden fixture methods (beforeClass/afterClass/before/after)
+                    boolean hasFixtureOverrides = bc.getMembers().stream()
+                            .filter(BodyDeclaration::isMethodDeclaration)
+                            .map(BodyDeclaration::asMethodDeclaration)
+                            .anyMatch(m -> {
+                                String name = m.getNameAsString();
+                                return name.equals("beforeClass") || name.equals("afterClass")
+                                        || name.equals("before") || name.equals("after");
+                            });
+                    return hasFixtureOverrides;
+                })
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toUnmodifiableSet())
+                .stream().collect(Collectors.toCollection(java.util.HashSet::new));
+
+        // Propagate to subclasses that extend a benchmark that will be generated
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (String className : generatedBenchmarks.keySet()) {
+                if (toAdd.contains(className)) continue;
+                String sup = inputClasses.get(className).getSuperclassName();
+                String supBenchmark = null;
+                if (sup != null) {
+                    String mapped = benchmarkClassNames.get(sup);
+                    if (mapped != null) {
+                        supBenchmark = ClassNames.canonicalClassName(sup + "$" + mapped);
+                    }
+                }
+                // If superclass was scheduled to be added, include this class as well
+                if (sup != null && toAdd.contains(sup)) {
+                    toAdd.add(className);
+                    changed = true;
+                }
+            }
+        }
+
+        // Finally, add the selected benchmark classes into their enclosing compilation units.
+        for (String testClassName : toAdd) {
+            TypeDeclaration<?> enclosing =
+                    findOutputTypeDeclaration(compilationUnits, testClassName);
+            ClassOrInterfaceDeclaration benchmarkClass = generatedBenchmarks.get(testClassName);
+            if (benchmarkClass != null) {
+                enclosing.addMember(benchmarkClass);
+            }
         }
         return Collections.unmodifiableMap(compilationUnits);
     }
 }
+
